@@ -1,0 +1,8 @@
+.venv/
+.tools/
+.pio/
+build/
+backups/
+__pycache__/
+*.pyc
+.claude/settings.local.json
