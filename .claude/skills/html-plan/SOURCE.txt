@@ -1,0 +1,4 @@
+Source: https://github.com/anthropics/claude-plugins-community/tree/main/html-plan
+Commit: 88003be1129c09381d27100b37a8fdc21b3214bf
+License: MIT (author: Thariq Shihipar)
+Installed: 2026-11-06

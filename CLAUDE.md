@@ -21,7 +21,18 @@
 - Windows / PowerShell。参考は `C:\MyProj\kantanMuse`（あくまで参考。そのまま流用しない）。
 - ツールはプロジェクト内に閉じて導入する（`.venv/`、`.tools/`）。
   グローバルの Python / PlatformIO / Windows 設定は変更しない。
-- ビルド手段は未確定。決まったらここに「コマンド」節を追加する。
+- ビルドは PlatformIO + ESP-IDF（pioarduino 55.03.312、出荷時デモと同じ構成）。
+  PlatformIO 本体は `.venv/`、ツールチェーンは `.tools/platformio/` に置く。
+- `upstream/M5StopWatch-UserDemo/` は公式の出荷時デモの参照用 clone（git 管理外）。
+  HAL・ピン配置の参考と、ツールチェーンの動作確認・出荷時ファームへの復帰用。
+
+## コマンド（ワークスペース直下の PowerShell で実行）
+
+- ビルド: `.\dev.ps1 build`（既定は upstream のデモ。`-Project <フォルダ>` で切替）
+- ポート一覧: `.\dev.ps1 ports`
+- 書き込み: `.\dev.ps1 upload -Port COMx`
+- シリアル監視: `.\dev.ps1 monitor -Port COMx`
+- フラッシュ全体のバックアップ（読むだけ）: `.\dev.ps1 backup -Port COMx`
 
 ## 実機への書き込み
 
@@ -36,6 +47,11 @@
 - 公開リポジトリ: https://github.com/haiatto/museStopWatch （2026-11-06 ユーザー指示で公開）
 - コミット・push はユーザーの指示があったときだけ行う。force push はしない。
 - Wi-Fi パスワード、トークン、バックアップの中身を出力・コミットしない。
+
+## スキル
+
+- `.claude/skills/html-plan/`: 実装計画を対話式の HTML 1枚にまとめる（`/html-plan <作るもの>`）。
+  入手元は SOURCE.txt。計画ページは `work/plans/` に保存し、pack には node を使う。
 
 ## 作業記録
 
