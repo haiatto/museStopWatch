@@ -17,9 +17,12 @@ The compiler: $MSW_GCC, or xtensa-esp32s3-elf-gcc on PATH, or the one ESP-IDF
 installed under .tools/ in this project. Everything else comes from sdk/
 (include/ from tools/make_sdk.py, stub/ from tools/gen_msw_exports.py).
 
-Two links: the app itself (a shared object, entry app_main, no C library),
-and a check that links it against stub/msw_stub.c with --no-undefined, so a
-call the firmware does not give fails here and not on the watch.
+Three links: the app itself (a shared object, entry app_main, no C library,
+stripped: <id>.so goes in the package), the same with its symbols and debug
+lines (<id>.elf, kept in build/ for addr2line on the ELF addresses in a
+crash report), and a check that links it against stub/msw_stub.c with
+--no-undefined, so a call the firmware does not give fails here and not on
+the watch.
 """
 import glob
 import json
@@ -39,13 +42,13 @@ ICON_BG = (0x1A, 0x1F, 0x26)   # the launcher's icon ring
 SOURCE_MAX = 256 * 1024        # the app's files kept in the package (app.source)
 
 CFLAGS = [
-    "-mlongcalls", "-Os", "-fPIC", "-ffunction-sections", "-fdata-sections",
+    "-mlongcalls", "-Os", "-g", "-fPIC", "-ffunction-sections", "-fdata-sections",
     "-fno-common", "-fvisibility=hidden", "-fno-jump-tables", "-fno-tree-switch-conversion",
     "-std=gnu17", "-Wall", "-Wno-unused-function",
     "-DESP_PLATFORM", "-DLV_CONF_INCLUDE_SIMPLE", "-DMSW_APP",
 ]
 LDFLAGS = ["-shared", "-nostdlib", "-nostartfiles", "-e", "app_main",
-           "-Wl,--gc-sections", "-Wl,--strip-all"]
+           "-Wl,--gc-sections"]
 
 
 def find_gcc():
@@ -124,6 +127,21 @@ def make_source(app):
     return b"MSWS" + struct.pack("<I", len(data)) + data
 
 
+def check_layout(elf):
+    """.rodata must not start inside .text's last word (see the align above)."""
+    shoff, = struct.unpack_from("<I", elf, 0x20)
+    shentsize, shnum, shstrndx = struct.unpack_from("<HHH", elf, 0x2E)
+    secs = [struct.unpack_from("<IIIIIIIIII", elf, shoff + i * shentsize) for i in range(shnum)]
+    strtab = secs[shstrndx][4]
+    def name(sh):
+        return elf[strtab + sh[0]:elf.index(b"\0", strtab + sh[0])].decode()
+    by = {name(sh): sh for sh in secs}
+    if ".text" in by and ".rodata" in by:
+        text_end = by[".text"][3] + by[".text"][5]
+        if by[".rodata"][3] < (text_end + 3) & ~3:
+            sys.exit("layout: .rodata starts inside .text's last word; the loader would break its first string")
+
+
 def main():
     if len(sys.argv) != 2:
         sys.exit(__doc__)
@@ -153,8 +171,23 @@ def main():
         run([gcc, *CFLAGS, *incs, "-c", src, "-o", obj])
         objs.append(obj)
 
+    # elf_loader rounds .text up to 4 bytes when it maps the app, so a
+    # .rodata starting at an odd address right after .text (only strings,
+    # 1-aligned) would have its first string relocated into the code, where
+    # the firmware can't read it byte by byte. A 4-aligned constant kept in
+    # .rodata (-u keeps it from --gc-sections) aligns the whole section.
+    align_c = os.path.join(out, "msw_align.c")
+    with open(align_c, "w", encoding="utf-8") as f:
+        f.write("const int msw_rodata_align[1] __attribute__((aligned(4))) = { 0 };\n")
+    align_o = os.path.join(out, "msw_align.o")
+    run([gcc, *CFLAGS, "-c", align_c, "-o", align_o])
+    objs.append(align_o)
+    LDFLAGS.append("-Wl,-u,msw_rodata_align")
+
     so = os.path.join(out, app_id + ".so")
-    run([gcc, *LDFLAGS, *objs, "-o", so])
+    run([gcc, *LDFLAGS, "-Wl,--strip-all", *objs, "-o", so])
+    debug_elf = os.path.join(out, app_id + ".elf")      # same addresses, with symbols
+    run([gcc, *LDFLAGS, *objs, "-o", debug_elf])
 
     # The check: every symbol the app needs must be one the firmware gives.
     stub_o = os.path.join(out, "msw_stub.o")
@@ -170,6 +203,7 @@ def main():
     os.remove(check)
 
     elf = open(so, "rb").read()
+    check_layout(elf)
     icon = make_icon(meta)
     source = make_source(app)
     body = icon + elf + source
@@ -180,6 +214,7 @@ def main():
     with open(pkg, "wb") as f:
         f.write(head + body)
     print(f"{os.path.relpath(pkg)}: {len(head) + len(body)} bytes (code {len(elf)}, icon {len(icon)}, source {len(source)})")
+    print(f"{os.path.relpath(debug_elf)}: for addr2line -pfiaC -e {os.path.relpath(debug_elf)} <ELF address from app.log>")
 
 
 if __name__ == "__main__":

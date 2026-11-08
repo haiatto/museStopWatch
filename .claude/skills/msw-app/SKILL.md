@@ -29,7 +29,8 @@ Muse は同じ知識を、ファームに入っているガイド
 ```
 
 ほかのコンソールコマンド: `msw.app.list`、`msw.app.run <id>`、`msw.app.stop`、
-`msw.app.rm <id>`、`msw.app.src <id>`（パッケージに入っているソース。Muse は `app.source`）、`msw.imu`（IMU の生の値と画面の向きに直した値）、
+`msw.app.rm <id>`、`msw.app.src <id>`（パッケージに入っているソース。Muse は `app.source`）、
+`msw.app.shot`（今の画面の JPEG を base64 の行で。Muse は `app.screenshot`）、`msw.imu`（IMU の生の値と画面の向きに直した値）、
 `msw.tp <秒>`（タッチ IC のレジスタを表示）。
 
 ## 手順
@@ -41,7 +42,8 @@ Muse は同じ知識を、ファームに入っているガイド
 3. COM ポートを確かめ（`.\dev.ps1 ports`）、ユーザーに伝えてから入れて起動する。
 4. 10 秒ほど動かして `msw.app.stop` し、`msw.app.log` を読む
    （1 秒あたりのティック数、ティックの時間、表示の時間、片付けたもれ）。
-   落ちると本体が再起動し、次の起動時のログにアプリ名が出る。
+   落ちると本体が再起動し、次の起動時の app.log に `CRASH:` の報告が出る（原因、ヒント、
+   バックトレース。アプリの行は `ELF 0x...` なので `addr2line -pfiaC -e apps/<名前>/build/<id>.elf 0x...`）。
 5. 画面の見え方と音をユーザーに聞く。ログがきれいでも、実機で確かめたことにはならない。
 
 ## 実測（2026-11-08）
@@ -51,6 +53,13 @@ Muse は同じ知識を、ファームに入っているガイド
 - アプリの読み込み 1〜4 ms。アプリと画面バッファがあるときの PSRAM の空き 約 2 MB。
 
 ## わかったこと
+
+- elf_loader は `.text` の大きさを 4 バイトに切り上げて区間を決める。`.text` が奇数の長さで、
+  後ろの `.rodata` が文字列だけ（1 バイト揃え）だと、最初の文字列がコード（I バス）側に再配置され、
+  バイトで読むと LoadStoreError（2026-11-08、dance）。build.py が `.rodata` を 4 バイトに揃え、
+  配置を確かめる。古いアプリは msw_api_readable が .rodata のコピーに読み替える（lvgl に渡すと落ちる）。
+- 大きな仕事（lv_snapshot、JPEG）は呼び出し元のスタックで動かさない。シリアルのタスクは 3.5 KB で、
+  lv_snapshot がスタックをあふれさせた。PSRAM スタックの専用タスク（msw_task_create）で動かす。
 
 - パッケージにはソースが入る（2026-11-08、ユーザーの案）。build.py が ELF の後に
   "MSWS" + 長さ + `--- name ---` 区切りの app.json・.c・.h を付ける（256 KB まで）。本体は

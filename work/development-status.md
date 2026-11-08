@@ -471,3 +471,30 @@
   Muse の `app.source`（id、offset でページ）、シリアル `msw.app.src <id>`。guide.md・stopwatch_guide.md（版 .4）・スキルに書いた。
 - 実機: pyoko を入れ直し、`msw.app.src pyoko` で返ったソースが手元の main.c と同じ。dance（前に入れたもの）は no_source。
 - dance の原因調べは、Muse に新しい build.py で作り直して入れてもらってから（app.source でソースが取れる）。
+
+## Muse 向けのデバッグ支援（2026-11-08）
+
+- クラッシュ報告（msw_app_crash.c）: `-Wl,--wrap=esp_panic_handler` で panic を先に受け、RTC_NOINIT に
+  アプリ id・EXCCAUSE・EXCVADDR・理由・タスク名・バックトレース 12 段・直前のログ 4 行を残す。
+  次の起動で app.log に `CRASH:` の行（原因の名前、ヒント、アプリの行は ELF アドレス、ファームの行は
+  近い書き出し関数、ファームの ELF sha256）。実機: わざと NULL に書くアプリで StoreProhibited、
+  `app crashtest, ELF 0x22b` → addr2line で boom/tick の行が出た。シリアルのスタックあふれ（下）も報告された。
+- build.py: `-g` で組み、`build/<id>.elf`（シンボル付き、同じアドレス）を残す。`.so` は strip。
+- ガード: 文字列・バッファを受ける関数（msw_log、msw_gfx_text、msw_text_width、msw_sprite_from_art、
+  msw_pcm_write、msw_say、msw_store_put/get、msw_bubble）は `msw_api_readable/writable` を通す。
+  読めないポインタは無視して 1 行、コード内のポインタはデータ側のコピーを読む。lvgl の関数は対象外。
+- 止まったティック: esp_timer が 1 秒ごとに見て、3 秒戻らないと 1 行。300 ms を超えるティックも 1 行（3 回まで）。
+  タスク WDT は無効なので、待つループは再起動しかない。
+- `app.screenshot`（msw_app_shot.c）: フレーム描画ならフレーム＋オーバーレイ、それ以外は lv_snapshot
+  （CONFIG_LV_USE_SNAPSHOT=y を追加）。esp_new_jpeg で 466x466 の JPEG（品質 70、約 6〜23 KB、150〜210 ms）。
+  16 KB の PSRAM スタックの専用タスクで作る（シリアルのタスク 3.5 KB で lv_snapshot がスタックあふれ →
+  クラッシュ報告で見つけた）。シリアル `msw.app.shot` は base64 の行で出す。
+- **dance が落ちた原因**: elf_loader が `.text` の大きさを 4 バイトに切り上げて（esp_elf.c:334
+  `ELF_ALIGN(text_size, 4)`）区間を決めるので、`.text` が奇数の長さで、すぐ後の `.rodata` が 1 バイト揃え
+  （文字列だけ）だと、最初の文字列がコード（I バス）側に再配置される。バイト読みで LoadStoreError。
+  managed_components は git 管理外なので直さず、build.py で `.rodata` に 4 バイト揃えの定数を足して
+  （`-Wl,-u,msw_rodata_align`）揃え、組み立て時に配置を確かめる。古いアプリは、ガードが本当の .rodata の
+  コピーに読み替える（実機: 前の dance が落ちずに「テストちゅう」を描いた）。
+- ガイド: guide.md、stopwatch_guide.md（版 .5）、スキルに書いた。
+- ランチャーのタイトルの右にスピーカーの状態（オン = 黄の音のマーク、オフ = 灰の消音マーク）。ユーザーの要望
+  （アプリ選択の画面では黄ボタンが効くのに、状態が見えない）。0.4 秒ごとの poll で合わせる。実機での見え方は未確認。
