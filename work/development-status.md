@@ -442,3 +442,14 @@
 - stopwatch_guide.md（版 2026-11-08.2）に「ファームの更新」: 取得先は haiatto/museStopWatch の Releases の
   muse-gadget.bin だけ、ほかの URL は実行前にユーザーに確かめる。CLAUDE.md と README に派生版の手順。
 - Releases にはまだ何も上げていない。
+
+### 2026-11-08 追記: stopwatch.doc が Muse で「不明なエラー」
+
+- Muse の報告: コマンド一覧には出る（17 個、版 2026-11-08.2）が、呼ぶと不明なエラー。
+- 原因: 結果は `{ok, payload}` の形が必要（noise_control.cpp の wrap_result_json は ok・payload・error だけを送る）。
+  msw_doc_command は `{version, content}` を直接返していたので、中身が捨てられていた。
+- 直した: `{ok: true, payload: {version, content}}`。Muse が本文を読めたことをユーザーが確認（2026-11-08）。
+- Muse の指摘: ガイドの voice.configure は一覧にない（StopWatch は CONFIG_HOMEHUB_VOICE オフ）。ガイドから外し、
+  音量は本体の 設定 > Sound と書いた（版 2026-11-08.3）。COM5 に書き込み済み。
+- Muse の報告では、ファームの版が 999.0.0 と出ている（esp_app_desc の version）。OTA の「新しい版だけ」の判定に関わるので、
+  Releases に上げる前に版の付け方を決める必要がある。
