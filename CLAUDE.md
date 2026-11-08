@@ -31,6 +31,10 @@
 - 公式資料: https://docs.m5stack.com/en/products/sku/C152
   工場出荷デモ（ESP-IDF）: GitHub の M5StopWatch-UserDemo
 - ピン配置・パーティションなどは推測せず、公式資料で確認してから使う。
+- 内蔵 RAM は足りない（2026-11-08 ユーザー決定）。自分で足す変数・バッファ・タスクのスタックは
+  PSRAM に置く（`EXT_RAM_BSS_ATTR`、`heap_caps_malloc(..., MALLOC_CAP_SPIRAM)`、`msw_task_create`）。
+  内蔵に置くのは、特別な理由があるもの（DMA、割り込み、フラッシュ書き込み中に使うものなど）と小さなものだけ。
+  音などは最低限の大きさなら内蔵でもよい。足した後は heartbeat の `int=` か `>msw.mem` で確かめる。
 
 ## 開発環境の方針
 
