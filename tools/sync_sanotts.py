@@ -1,12 +1,12 @@
-"""Copy the parts of sanoTTS-jp that the firmware builds into components/sanotts/upstream.
+"""Copy the parts of sanoTTS-jp that the firmware builds into components/muse_diy_stopwatch/sanotts/upstream.
 
     git clone https://github.com/ayutaz/sanoTTS-jp .tools/sanotts-jp     (or git pull there)
     .venv\\Scripts\\python.exe tools\\sync_sanotts.py
 
 The files are copied unchanged (upstream says not to edit them; our own code
-lives next to them in components/sanotts). The commit is written to
+lives next to them in components/muse_diy_stopwatch/sanotts). The commit is written to
 upstream/SOURCE.txt. The model and dictionary blobs are not in the git repo;
-they come from the official v1.2.0 release (see components/sanotts/model/README.md).
+they come from the official v1.2.0 release (see components/muse_diy_stopwatch/sanotts/model/README.md).
 """
 import pathlib
 import shutil
@@ -15,7 +15,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SRC = ROOT / ".tools" / "sanotts-jp"
-DST = ROOT / "muse-gadget-sdk" / "esp32" / "components" / "sanotts" / "upstream"
+DST = ROOT / "muse-gadget-sdk" / "esp32" / "components" / "muse_diy_stopwatch" / "sanotts" / "upstream"
 
 CSRC = """
 saanotts.c saanotts.h saanotts_int8.c saanotts_int8.h saanotts_stream.c saanotts_stream.h

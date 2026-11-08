@@ -25,7 +25,9 @@ function Invoke-Idf([string[]]$IdfArgs) {
     $defaults = "sdkconfig.defaults;devices/sdkconfig.muse;devices/sdkconfig.muse-$Board;devices/sdkconfig.musestopwatch"
     Push-Location $fwDir
     try {
-        idf.py -B $buildDir -DIDF_TARGET=esp32s3 "-DSDKCONFIG=$buildDir/sdkconfig" "-DSDKCONFIG_DEFAULTS=$defaults" @IdfArgs
+        # Our own components live one level down (components/muse_diy_stopwatch/*).
+        idf.py -B $buildDir -DIDF_TARGET=esp32s3 "-DSDKCONFIG=$buildDir/sdkconfig" "-DSDKCONFIG_DEFAULTS=$defaults" `
+            "-DEXTRA_COMPONENT_DIRS=components/muse_diy_stopwatch" @IdfArgs
     } finally { Pop-Location }
 }
 

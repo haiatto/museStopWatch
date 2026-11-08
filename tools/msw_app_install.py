@@ -4,7 +4,7 @@
     .venv\\Scripts\\python.exe tools\\msw_app_install.py COM5 --cmd "msw.app.log"
 
 Sends the package as base64 lines (>msw.app.put / data / end, see
-components/miniapp/msw_app_core.c), each answered before the next goes.
+components/muse_diy_stopwatch/miniapp/msw_app_core.c), each answered before the next goes.
 Opens the port without touching DTR/RTS (no reset). --cmd sends one other
 console command (without '>') and prints the reply.
 """

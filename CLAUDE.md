@@ -68,8 +68,8 @@
 
 - `.claude/skills/html-plan/`: 実装計画を対話式の HTML 1枚にまとめる（`/html-plan <作るもの>`）。
   入手元は SOURCE.txt。計画ページは `work/plans/` に保存し、pack には node を使う。
-- `.claude/skills/msw-app/`: ミニアプリ（`apps/`、`components/miniapp`）の作成・ビルド・実機での確認。
-  Muse 向けの同じ内容は `components/miniapp/guide.md`（`app.doc`）。片方で学んだことはもう片方にも書く。
+- `.claude/skills/msw-app/`: ミニアプリ（`apps/`、`components/muse_diy_stopwatch/miniapp`）の作成・ビルド・実機での確認。
+  Muse 向けの同じ内容は `components/muse_diy_stopwatch/miniapp/guide.md`（`app.doc`）。片方で学んだことはもう片方にも書く。
 
 ## 作業記録
 

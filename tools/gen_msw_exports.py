@@ -3,8 +3,8 @@
     .venv\\Scripts\\python.exe tools\\gen_msw_exports.py
 
 Reads sdk/exports.list and the msw_* prototypes of
-muse-gadget-sdk/esp32/components/miniapp/include/msw_app.h. Writes
-  muse-gadget-sdk/esp32/components/miniapp/msw_app_exports.c  (firmware)
+muse-gadget-sdk/esp32/components/muse_diy_stopwatch/miniapp/include/msw_app.h. Writes
+  muse-gadget-sdk/esp32/components/muse_diy_stopwatch/miniapp/msw_app_exports.c  (firmware)
   sdk/stub/msw_stub.c                                         (SDK)
 Run it after changing either input, then build the firmware.
 """
@@ -13,9 +13,9 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-HEADER = os.path.join(ROOT, "muse-gadget-sdk", "esp32", "components", "miniapp", "include", "msw_app.h")
+HEADER = os.path.join(ROOT, "muse-gadget-sdk", "esp32", "components", "muse_diy_stopwatch", "miniapp", "include", "msw_app.h")
 LIST = os.path.join(ROOT, "sdk", "exports.list")
-OUT_FW = os.path.join(ROOT, "muse-gadget-sdk", "esp32", "components", "miniapp", "msw_app_exports.c")
+OUT_FW = os.path.join(ROOT, "muse-gadget-sdk", "esp32", "components", "muse_diy_stopwatch", "miniapp", "msw_app_exports.c")
 OUT_STUB = os.path.join(ROOT, "sdk", "stub", "msw_stub.c")
 
 

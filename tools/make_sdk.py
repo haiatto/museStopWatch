@@ -4,7 +4,7 @@
 
 Run after a firmware build (it needs the build's sdkconfig.h and the
 downloaded lvgl). Writes
-  sdk/include/msw_app.h      the API (from components/miniapp/include)
+  sdk/include/msw_app.h      the API (from components/muse_diy_stopwatch/miniapp/include)
   sdk/include/sdkconfig.h    the firmware's configuration (lvgl reads it)
   sdk/include/lvgl/...       lvgl's headers (lvgl.h and src/**/*.h)
 so sdk/ is self-contained: sdk/build.py, the stub and these headers are all
@@ -17,7 +17,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FW = os.path.join(ROOT, "muse-gadget-sdk", "esp32")
 LVGL = os.path.join(FW, "managed_components", "lvgl__lvgl")
 CONFIG = os.path.join(FW, "build-muse-m5stack-stopwatch", "config", "sdkconfig.h")
-HEADER = os.path.join(FW, "components", "miniapp", "include", "msw_app.h")
+HEADER = os.path.join(FW, "components", "muse_diy_stopwatch", "miniapp", "include", "msw_app.h")
 OUT = os.path.join(ROOT, "sdk", "include")
 
 

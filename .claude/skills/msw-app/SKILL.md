@@ -1,72 +1,74 @@
 ---
 name: msw-app
-description: Make, build, install and measure a museStopWatch mini app (ELF app run from PSRAM on the M5Stack StopWatch) from this workspace. Use when asked to write or fix an app under apps/, or to change the mini-app runtime (components/miniapp) and its SDK.
+description: museStopWatch のミニアプリ（M5Stack StopWatch の PSRAM で動く ELF アプリ）を、このワークスペースで作る・ビルドする・実機に入れる・測る。apps/ のアプリを書く・直すとき、またはミニアプリの実行環境（components/muse_diy_stopwatch/miniapp）と SDK を変えるときに使う。
 ---
 
-# museStopWatch mini apps (this workspace)
+# museStopWatch のミニアプリ（このワークスペース）
 
-Muse gets the same knowledge from the firmware's built-in guide
-(`muse-gadget-sdk/esp32/components/miniapp/guide.md`, served by `app.doc`).
-Read it first: API summary, patterns, pitfalls, rules. Keep it and this
-skill in step: a lesson learned here goes into the guide too.
+Muse は同じ知識を、ファームに入っているガイド
+（`muse-gadget-sdk/esp32/components/muse_diy_stopwatch/miniapp/guide.md`、`app.doc` で読める）から得る。
+まずそれを読む（API の要約、うまくいく作り方、落とし穴、ルール）。
+ガイドとこのスキルは揃えておく。ここでわかったことはガイドにも書く。
 
-## Where things are
+## どこに何があるか
 
-- API header: `muse-gadget-sdk/esp32/components/miniapp/include/msw_app.h`
-- Runtime: `components/miniapp/msw_app_*.c` (`msw_app_priv.h` lists them)
-- What apps may call besides msw_*: `sdk/exports.list`
-- Apps: `apps/<name>/app.json` + `*.c` (blocks, pyoko, aquarium are examples)
+- API のヘッダー: `muse-gadget-sdk/esp32/components/muse_diy_stopwatch/miniapp/include/msw_app.h`
+- 実行環境: `components/muse_diy_stopwatch/miniapp/msw_app_*.c`（一覧は `msw_app_priv.h`）
+- msw_* 以外にアプリが呼べる関数: `sdk/exports.list`
+- アプリ: `apps/<名前>/app.json` と `*.c`（blocks、pyoko、aquarium がお手本）
 
-## Commands (workspace root, Git Bash or PowerShell)
+## コマンド（ワークスペース直下、Git Bash か PowerShell）
 
 ```
-.venv/Scripts/python.exe tools/gen_msw_exports.py      # after changing msw_app.h or exports.list
-.\dev.ps1 build                                        # firmware (needed after the line above)
-.venv/Scripts/python.exe tools/make_sdk.py             # after a firmware build: sdk/include
-.venv/Scripts/python.exe sdk/build.py apps/<name>      # -> apps/<name>/build/<id>.mswapp
-.venv/Scripts/python.exe tools/msw_app_install.py COM5 apps/<name>/build/<id>.mswapp --run
+.venv/Scripts/python.exe tools/gen_msw_exports.py      # msw_app.h か exports.list を変えたあと
+.\dev.ps1 build                                        # ファーム（上の行のあとは必要）
+.venv/Scripts/python.exe tools/make_sdk.py             # ファームのビルドのあと: sdk/include を作り直す
+.venv/Scripts/python.exe sdk/build.py apps/<名前>      # -> apps/<名前>/build/<id>.mswapp
+.venv/Scripts/python.exe tools/msw_app_install.py COM5 apps/<名前>/build/<id>.mswapp --run
 .venv/Scripts/python.exe tools/msw_app_install.py COM5 --cmd "msw.app.log"
 ```
 
-Other console commands: `msw.app.list`, `msw.app.run <id>`, `msw.app.stop`,
-`msw.app.rm <id>`, `msw.imu` (raw and mapped IMU values).
+ほかのコンソールコマンド: `msw.app.list`、`msw.app.run <id>`、`msw.app.stop`、
+`msw.app.rm <id>`、`msw.imu`（IMU の生の値と画面の向きに直した値）、
+`msw.tp <秒>`（タッチ IC のレジスタを表示）。
 
-## Steps
+## 手順
 
-1. Write the app. Original art, names and music only.
-2. Build it. A "the firmware does not give: X" error means: use something
-   else, or add X to `sdk/exports.list` (inline lvgl functions cannot be
-   exported: export what they call), regenerate, rebuild the firmware.
-3. Check the COM port (`.\dev.ps1 ports`), tell the user, install and run.
-4. Run it ~10 s, `msw.app.stop`, then read `msw.app.log`: ticks a second,
-   tick time, present time, leaks freed. Crashes restart the watch and the
-   log names the app on the next boot.
-5. Ask the user what the screen shows and how it sounds. A clean log is not
-   a device test.
+1. アプリを書く。絵・名前・音楽はオリジナルだけを使う（既存の作品の素材やキャラは使わない）。
+2. ビルドする。「the firmware does not give: X」と出たら、別の関数を使うか、
+   X を `sdk/exports.list` に足して作り直し、ファームもビルドし直す
+   （lvgl の inline 関数は書き出せないので、それが中で呼ぶ関数を書き出す）。
+3. COM ポートを確かめ（`.\dev.ps1 ports`）、ユーザーに伝えてから入れて起動する。
+4. 10 秒ほど動かして `msw.app.stop` し、`msw.app.log` を読む
+   （1 秒あたりのティック数、ティックの時間、表示の時間、片付けたもれ）。
+   落ちると本体が再起動し、次の起動時のログにアプリ名が出る。
+5. 画面の見え方と音をユーザーに聞く。ログがきれいでも、実機で確かめたことにはならない。
 
-## Measured (2026-11-08)
+## 実測（2026-11-08）
 
-- Full-frame present 26.7 ms (0.12 µs/px, QSPI 40 MHz); drawing ~25 ns per
-  pixel written in PSRAM. Full redraw with layers: ~18-20 fps.
-- App load: 1-4 ms. PSRAM free with an app and its frame: ~2 MB.
+- 全画面の表示 26.7 ms（1 ピクセル 0.12 µs、QSPI 40 MHz）。PSRAM への描画は
+  1 ピクセルあたり約 25 ns。重ねて全部描き直すと約 18〜20 fps。
+- アプリの読み込み 1〜4 ms。アプリと画面バッファがあるときの PSRAM の空き 約 2 MB。
 
-## Lessons
+## わかったこと
 
-- Touch is one finger (rule, user 2026-11-08). The CST820 does report two
-  (count at 0x02, 6 bytes a finger from 0x03; `msw.tp <s>` dumps the raw
-  registers), and msw_touches was tried, but it is self-capacitive: with
-  an arrow held and a jump tapped it often went 2 -> 0 -> 1 and lost the
-  held finger for good (work/logs-2026-11-07/tpdump3.log). msw_touches was
-  removed; apps must not need two touches. Put the second action on the
-  blue button (apps/pyoko: arrows on the screen, jump on blue, a blue mark
-  at the upper-right rim). A slide-up-to-jump gesture was also tried and
-  removed: a held finger drifts, so it fired by mistake.
-- Buttons: yellow = upper left (the speaker button outside apps), blue =
-  upper right (talk outside apps). In apps yellow opens the runtime's app
-  menu (つづける / おわる, msw_app_menu.c) and pauses ticks; blue is the
-  app's (MSW_BUTTON_BLUE), not sent to Muse. User rule (2026-11-08): this is
-  the standard; an app that does otherwise (msw_menu_own) must tell the
-  user how to quit.
-- On-screen pads: trial (2026-11-08) along the rim at the lower left and
-  lower right (the left/right rim at mid height hid too much of the
-  screen under the thumbs): see apps/blocks and apps/pyoko.
+- タッチは 1 本指（ルール、ユーザー 2026-11-08）。CST820 は 2 本まで報告する
+  （0x02 に本数、0x03 から 1 本 6 バイト。`msw.tp <秒>` で生のレジスタを見られる）。
+  msw_touches も試したが、自己容量式なので、矢印を押したままジャンプをタップすると
+  2 → 0 → 1 となって、押したままの指を見失うことが多かった（手元のログ
+  work/logs-2026-11-07/tpdump3.log、git には入れていない）。msw_touches は削除した。
+  アプリは 2 本同時のタッチを前提にしない。2 つ目の操作は青ボタンに割り当てる。
+  上スライドでジャンプも試したが、押している指はずれるので誤動作し、やめた。
+- ボタン: 黄 = 左上（アプリの外ではスピーカー）、青 = 右上（アプリの外では話す）。
+  アプリ中は、黄で実行環境のアプリメニュー（つづける / おわる、msw_app_menu.c）が開き、
+  ティックが止まる。青はアプリのもの（MSW_BUTTON_BLUE）で、Muse には送らない。
+  ユーザーのルール（2026-11-08）: これを標準とする。ほかのやり方にするアプリ
+  （msw_menu_own）は、終わり方をユーザーに案内する。
+- 画面のパッド: 円の左右の中ほどは、親指で画面が隠れすぎた。斜め下の左右、
+  円周に沿う所に置くのを試している（2026-11-08、apps/blocks）。
+- ぴょこの森の移動（試作、2026-11-08）: 左下の縁にスライド式のパッド
+  （触れた所が中心、40 px で最高速、1.5 乗の曲線）。10 時の位置に「傾き」ボタン
+  （押している間だけ傾きで移動。押した瞬間の傾きが水平、0.15 g（約 9°）で最高速、
+  1.8 乗の曲線、デッドゾーンなし）。ジャンプは青ボタン。右上の縁に青い↑の印と、
+  タイトルに操作の案内を出す。ユーザーの感想: デッドゾーンは不要で、傾きはそのまま
+  反映し、非線形の曲線がよい。
