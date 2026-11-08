@@ -1,0 +1,32 @@
+{
+  "id": "aquarium",
+  "name": "まるい水槽",
+  "version": 1,
+  "icon": [
+    "................",
+    ".....WWWWWW.....",
+    "...WW......WW...",
+    "..W..........W..",
+    ".W~~~~~~~~~~~~W.",
+    ".WBBBBBBBBBBBBW.",
+    "WBBBBOOBBBBBBBBW",
+    "WBBBOOOOOBBBBBBW",
+    "WBBBBOOBBBBYBBBW",
+    "WBBBBBBBBBYYYBBW",
+    "WBBBBBBBBBBYBBBW",
+    ".WBGBBBBBBBBBGW.",
+    ".WBGBBGBBBBBGGW.",
+    "..WGSSGSSSSSGW..",
+    "...WWSSSSSSWW...",
+    ".....WWWWWW....."
+  ],
+  "palette": {
+    "W": "#b3e5fc",
+    "~": "#e1f5fe",
+    "B": "#1e88e5",
+    "O": "#ff7043",
+    "Y": "#ffee58",
+    "G": "#43a047",
+    "S": "#d7b98e"
+  }
+}

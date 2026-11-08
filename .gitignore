@@ -7,3 +7,7 @@ __pycache__/
 *.pyc
 .claude/settings.local.json
 upstream/
+
+# raw build, flash and serial logs (machine paths, device ids)
+work/logs-*/
+work/*.log

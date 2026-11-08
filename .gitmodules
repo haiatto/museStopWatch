@@ -1,0 +1,4 @@
+[submodule "muse-gadget-sdk"]
+	path = muse-gadget-sdk
+	url = https://github.com/haiatto/muse-gadget-sdk.git
+	branch = dev/stopwatch

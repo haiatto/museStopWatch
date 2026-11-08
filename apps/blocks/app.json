@@ -1,0 +1,30 @@
+{
+  "id": "blocks",
+  "name": "おちものブロック",
+  "version": 1,
+  "icon": [
+    "................",
+    "................",
+    "...CCCC.........",
+    "...CCCC.........",
+    "...CCCCYYYY.....",
+    "...CCCCYYYY.....",
+    ".......YYYY.....",
+    ".......YYYY.....",
+    "...GGGGRRRRRRRR.",
+    "...GGGGRRRRRRRR.",
+    "...GGGGRRRRRRRR.",
+    "GGGGGGGRRRRRRRR.",
+    "GGGGGGGPPPPPPPP.",
+    "GGGGGGGPPPPPPPP.",
+    "GGGGGGGPPPPPPPP.",
+    "GGGGGGGPPPPPPPP."
+  ],
+  "palette": {
+    "C": "#29b6f6",
+    "Y": "#ffca28",
+    "G": "#66bb6a",
+    "R": "#ef5350",
+    "P": "#ab47bc"
+  }
+}

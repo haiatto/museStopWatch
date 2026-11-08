@@ -1,0 +1,23 @@
+{
+  "id": "pyoko",
+  "name": "ぴょこの森",
+  "version": 1,
+  "icon": [
+    "...LL...",
+    "..GGGG..",
+    ".GGGGGG.",
+    ".GWKGWK.",
+    ".GGGGGG.",
+    ".GGPPGG.",
+    "..GGGG..",
+    ".FF..FF."
+  ],
+  "palette": {
+    "L": "#7cb342",
+    "G": "#4caf50",
+    "W": "#ffffff",
+    "K": "#1b1b1b",
+    "P": "#f48fb1",
+    "F": "#2e7d32"
+  }
+}

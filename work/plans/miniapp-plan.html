@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<title>ミニアプリ実行環境の計画</title>
+<link rel="stylesheet" href="../../.claude/skills/html-plan/runtime/htmlplan.css">
+<script src="../../.claude/skills/html-plan/runtime/htmlplan.js" defer></script>
+<style data-mock-shared>
+  .ui { font: 14px/1.45 "Hiragino Sans", "Yu Gothic UI", "Segoe UI", sans-serif; color: #1c1b19; }
+  .row { display: flex; gap: 14px; align-items: center; }
+  .chat { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  .me { align-self: flex-end; background: #1c1b19; color: #fff; padding: 7px 11px; border-radius: 12px 12px 2px 12px; max-width: 220px; }
+  .muse { align-self: flex-start; background: #f1ede4; padding: 7px 11px; border-radius: 12px 12px 12px 2px; max-width: 230px; }
+  .muse code { font-size: 12px; background: #fff; padding: 0 4px; border-radius: 4px; }
+  .dev { width: 170px; height: 170px; border-radius: 50%; background: #000; border: 8px solid #2b2b2b; color: #fff;
+         display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; flex: none; overflow: hidden; }
+  .dev .big { font: 600 40px/1 "Segoe UI", sans-serif; letter-spacing: 1px; }
+  .dev .sm { font-size: 11px; color: #bbb; margin-top: 6px; }
+  .dev .ring { position: absolute; inset: 10px; border-radius: 50%; border: 5px solid #e4572e; border-right-color: #333; border-bottom-color: #333; }
+  .dev .face { font-size: 42px; }
+  .dev .err { color: #ff8a7a; font-size: 12px; padding: 0 22px; text-align: center; }
+  .dev .cap { font-size: 11px; color: #ddd; padding: 0 20px; text-align: center; margin-top: 6px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 38px); gap: 9px; }
+  .ic { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .ic.add { border: 1px dashed #666; color: #888; font-size: 16px; }
+  .strip { display: flex; gap: 6px; align-items: center; }
+  .tile { font-size: 11px; color: #888; text-align: center; margin-top: 6px; }
+  .mini { position: absolute; left: 30px; bottom: 30px; display: flex; align-items: flex-end; gap: 4px; }
+  .mini .av { width: 26px; height: 26px; border-radius: 50%; background: #f6d365; color: #000; font-size: 13px; display: flex; align-items: center; justify-content: center; }
+  .mini .bub { background: #fff; color: #000; font-size: 10px; padding: 3px 6px; border-radius: 8px 8px 8px 2px; max-width: 80px; }
+  .x { position: absolute; top: 18px; right: 30px; width: 22px; height: 22px; border-radius: 50%; background: #c62828; color: #fff; font-size: 13px; display: flex; align-items: center; justify-content: center; }
+</style>
+<body>
+
+<header>
+  <h1>StopWatch の ELF ミニアプリとランチャー</h1>
+  <doc-changes new="9" changed="7"></doc-changes>
+  <details class="thread"><summary>Why · 5 件（ユーザーの言葉）</summary>
+    <doc-quote via="doc" from="the user" where="work/ideas.md 001">出荷時ファームにあったデモアプリ（ストップウォッチ、流体シミュレーション、ルーレット等）のようなアプリを、Muse が作って、その場で StopWatch に入れて動かせるようにする。</doc-quote>
+    <doc-quote via="prompt" from="the user" at="2026-11-07">アプリはを複数入れたり消したりが出来る方がよく、ランチャー的に動かせるとなおよいです。描画だけをさえたいわけじゃないです。Museとの関係は重要ではあるものの、ミニアバターと吹き出しとかで、画面に常駐したりできると便利でよいですが、必ずしもMuseがいる必要があるとは限らないとしたい</doc-quote>
+    <doc-quote via="prompt" from="the user" at="2026-11-07">ではELFで行く方向がよさそう。</doc-quote>
+    <doc-quote via="prompt" from="the user" at="2026-11-08">とりあえず作りたいものは、ゲームとかUIのあるミニ電卓とか鍵盤とかのアプリ、音や振動、加速度センサーやマイクを使えたり、あとはI/Oもそこそこ使いたい感じはある。</doc-quote>
+    <doc-quote via="prompt" from="the user" at="2026-11-08">アプリは丸形のアイコンでで、複数並べられる感じがよい。左側のスライド枠とかで設定と反対にあるとよさそう / アプリ消したり更新したりもMuseができる感じ。既存のものを使うよりは、専用のツールの方がよさそう</doc-quote>
+  </details>
+</header>
+
+<main>
+<doc-plan>
+
+<!-- ═════ 1 ═════ -->
+<doc-claim>
+  <p>ユーザーは顔の画面から右へスワイプして、丸いアイコンからアプリを開く。</p>
+  <doc-mock frame="none" w="640" caption="ランチャーは設定の反対側に入る。顔の画面は真ん中のまま。"><template>
+<div class="ui"><div class="strip">
+  <div><div class="dev" data-ref="launcher"><div class="grid">
+    <div class="ic" style="background:#e4572e">⏱</div><div class="ic" style="background:#4fc3f7">🎹</div><div class="ic" style="background:#81c784">🧮</div>
+    <div class="ic" style="background:#ba68c8">🎲</div><div class="ic" style="background:#ffb74d">🌊</div><div class="ic add">＋</div>
+  </div></div><div class="tile">ランチャー（新）</div></div>
+  <div style="color:#999">⇠</div>
+  <div><div class="dev"><div class="face">◕‿◕</div><div class="sm">ボタンで話す</div></div><div class="tile">顔（今のまま）</div></div>
+  <div style="color:#999">⇢</div>
+  <div><div class="dev" style="font-size:12px;color:#ccc">設定</div><div class="tile">設定（今のまま）</div></div>
+</div></div></template>
+    <doc-pin ref="launcher" anchor="tl" title="丸いアイコンを並べる">多いときは縦にスクロールする。</doc-pin>
+  </doc-mock>
+
+  <doc-claim>
+    <p>横のページは 3 枚になり、ランチャーが一番左に入る。</p>
+    <doc-code diff file="components/muse/muse_ui.c" start="1144" lang="c">
+<script type="text/plain">
+-        s_face = lv_tileview_add_tile(s_tv, 0, 0, LV_DIR_RIGHT);
++        /* museStopWatch: mini-app launcher left of the face. */
++        s_launcher = lv_tileview_add_tile(s_tv, 0, 0, LV_DIR_RIGHT);
++        msw_launcher_build(s_launcher);
++        s_face = lv_tileview_add_tile(s_tv, 1, 0, LV_DIR_LEFT | LV_DIR_RIGHT);
+         lv_obj_set_scrollbar_mode(s_face, LV_SCROLLBAR_MODE_OFF);
+         lv_obj_set_style_bg_color(s_face, lv_color_black(), 0);
+         lv_obj_set_style_bg_opa(s_face, LV_OPA_COVER, 0);
+-        s_settings = lv_tileview_add_tile(s_tv, 1, 0, LV_DIR_LEFT);
++        s_settings = lv_tileview_add_tile(s_tv, 2, 0, LV_DIR_LEFT);
++        lv_tileview_set_tile(s_tv, s_face, LV_ANIM_OFF);   /* start on the face */
+         lv_obj_add_event_cb(s_tv, tile_changed_cb, LV_EVENT_VALUE_CHANGED, NULL);
+</script>
+      <doc-pin line="1147" tone="info" title="顔は真ん中">起動時は顔のページを出す。</doc-pin>
+    </doc-code>
+  </doc-claim>
+
+  <doc-claim>
+    <p>アイコンを長く押すと、名前・版・大きさと、赤い × の削除が出る。</p>
+    <doc-mock frame="none" w="220" caption="保存した Wi-Fi の行と同じ操作にする。"><template>
+<div class="ui"><div class="dev"><div class="x" data-ref="del">×</div><div class="ic" style="background:#4fc3f7;width:56px;height:56px;font-size:26px">🎹</div>
+<div class="cap">鍵盤 · v3 · 48KB</div><div class="sm">タップで開く</div></div></div></template>
+      <doc-pin ref="del" anchor="r" title="削除の前に確認を出す"></doc-pin>
+    </doc-mock>
+  </doc-claim>
+</doc-claim>
+
+<!-- ═════ 2 ═════ -->
+<doc-claim>
+  <p>Muse は専用のツールで、アプリを作り、入れ、更新し、消す。</p>
+  <doc-mock frame="terminal" title="Muse ↔ StopWatch" w="480"><template><span class="dim">→</span> app.api {}
+<span class="g">←</span> {"api":1,"sdk":"github.com/haiatto/museStopWatch/sdk"}
+<span class="dim">  … Muse は VM で SDK を取り、piano.c をビルドする …</span>
+<span class="dim">→</span> app.install {"path":"workspace/apps/piano.mswapp","run":true}
+<span class="g">←</span> {"ok":true,"id":"piano","ver":3,"bytes":48120}
+<span class="dim">→</span> app.log {"id":"piano"}
+<span class="r">←</span> {"lines":["<b>crash</b> piano+0x1a4 LoadProhibited"],"running":null}
+<span class="dim">→</span> app.remove {"id":"dice"}
+<span class="g">←</span> {"ok":true}</template></doc-mock>
+
+  <doc-claim>
+    <p>本体は app.api・list・install・remove・run・stop・log の 7 つのコマンドを出す。</p>
+    <doc-schema id="cmds" lang="ts" title="コマンド（案）" caption="voice.say と同じく noise_control.cpp で登録し、app.c で受ける。">
+<script type="text/plain">
+type Api = {}   // -> { api: number; sdk: string }
+type App = { id: string; name: string; ver: number; bytes: number }
+type List = {}  // -> { apps: App[]; running: string | null }
+// path: one .mswapp file on the VM. The same id = update.
+type Install = { path: string; run?: boolean }
+type InstallError = "no_file" | "bad_format" | "api_too_new"
+                  | "missing_symbol" | "no_space"
+type InstallResult = { ok: true; id: string; ver: number }
+                   | { error: InstallError; message: string }
+type Remove = { id: string }
+type Run = { id: string }
+type Stop = {}
+// -> { lines: string[]; running: string | null }
+// The last 40 lines and the last crash.
+type Log = { id?: string }
+</script>
+    </doc-schema>
+    <doc-claim at="main/noise_control.cpp:1557">
+      <p><b>noise_control.cpp:1557</b> · voice.say の登録（この並びに足す）</p>
+      <doc-code src="main/noise_control.cpp" lines="1550-1575"></doc-code>
+    </doc-claim>
+  </doc-claim>
+
+  <doc-claim>
+    <p>本体は VM のファイルを読み、アプリ用の新しい領域に保存する。</p>
+    <doc-calls title="入れる流れ" caption="VM の読み出しは display.draw_file と同じ仕組みを使う。">
+<script type="text/plain">
+~ on_ws_command("app.install", {path, run})        @ main/app.c:1948
++   **msw_app_install**(path, run)                  @ components/miniapp/msw_app_store.c:1   -- 内部 RAM スタックのタスクで動く
++     vm_get_range(...)                             @ main/image_fetch.c:612   -- Range で分けて読む
++     **app_check**(buf, n)                         @ components/miniapp/msw_app_store.c:1   -- 形式、API 版、足りない関数
++     **store_write**(id, buf, n)                   @ components/miniapp/msw_app_store.c:1   -- /apps/<id>.mswapp
++   noise_ctrl_send_command_result(...)             @ main/noise_control.h:95
+</script>
+    </doc-calls>
+    <doc-claim at="main/image_fetch.c:612">
+      <p><b>image_fetch.c:612</b> · vm_get_range()（同じ読み方を使う）</p>
+      <doc-code src="main/image_fetch.c" lines="610-634" hl="617,627"></doc-code>
+    </doc-claim>
+  </doc-claim>
+
+  <doc-claim>
+    <p>アプリは 1 つのファイルで、見出し・アイコン・ELF を持つ。</p>
+    <doc-schema id="pkg" lang="c" title="msw_app_pkg.h · sketch" caption="本体は ELF を読む前に見出しを確かめる。">
+<script type="text/plain">
+typedef struct {
+    char     magic[4];       /* "MSWA" */
+    uint16_t api;            /* the API version the app was built for */
+    uint16_t ver;            /* the app's own version; a higher one replaces */
+    char     id[24];         /* "piano": file name and key in the store */
+    char     name[32];       /* "鍵盤": shown under the icon, UTF-8 */
+    uint32_t icon_size;      /* 64 x 64 RGB565A8, round mask applied by the launcher */
+    uint32_t elf_size;       /* then: icon bytes, then the ELF */
+    uint32_t crc32;          /* of everything after the header */
+} msw_app_pkg_t;
+</script>
+    </doc-schema>
+  </doc-claim>
+
+  <doc-claim>
+    <p>Muse は VM で SDK を取り、gcc を直接使ってアプリをビルドする。</p>
+    <doc-tree caption="SDK は公開リポジトリに置く。2026-11-07 の実験では 1 本のビルドが約 0.2 秒だった。">
+<script type="text/plain">
+sdk/
+  + README.md          # API、制限、画面の形、ボタン、落ちたときの読み方
+  + include/msw_app.h  # 本体の API（exports.list から作る）
+  + include/lvgl/      # 本体と同じ lvgl 9.5.0 のヘッダと lv_conf
+  + lib/libmsw_stub.so # 本体が出す関数の一覧。名前の間違いをリンクで見つける
+  + build.sh           # gcc → ELF → .mswapp（アイコンと見出しを付ける）
+  + examples/          # ポモドーロ、鍵盤、電卓、傾けるゲーム
+</script>
+    </doc-tree>
+    <doc-ask id="build">
+      <p>Muse の VM で Xtensa の gcc が動かないときは、どうしますか？</p>
+      <label><input type="radio" name="build" value="vm" checked> まず VM で試す。だめなら次を決める <small>ユーザーが Muse に頼んで確かめる</small></label>
+      <label><input type="radio" name="build" value="actions"> 最初から GitHub Actions でビルドする <small>VM はソースを push するだけ。数分かかる</small></label>
+    </doc-ask>
+  </doc-claim>
+</doc-claim>
+
+<!-- ═════ 3 ═════ -->
+<doc-claim>
+  <p>アプリは画面・タッチ・ボタン・音・振動・IMU・マイク・I/O を使える。</p>
+  <doc-schema id="api" lang="c" title="msw_app.h（API の版 1 の案）" caption="lvgl の部品と libc の一部も出す。一覧は exports.list の 1 か所で決める。">
+<script type="text/plain">
+/* screen: 466 x 466, round, centre (233, 233) */
+lv_obj_t *msw_screen(void);       /* lvgl: the app's screen */
+uint16_t *msw_fb_begin(void);     /* frame: 466x466 RGB565 */
+void msw_fb_present(const lv_area_t *dirty);   /* NULL = all */
+/* input */
+typedef void (*msw_btn_cb)(msw_btn_t b, bool down, void *u);
+typedef void (*msw_tick_cb)(uint32_t ms, void *u);
+void msw_on_button(msw_btn_cb cb, void *u);
+void msw_on_tick(msw_tick_cb cb, void *u);     /* <= 60 /s */
+/* sound and touch feedback */
+void msw_tone(int hz, int ms, int vol);        /* no wait */
+int  msw_pcm_write(const int16_t *mono, int n);  /* 16 kHz */
+void msw_vibrate(int ms, int strength);
+void msw_say(const char *text);                /* Sano TTS */
+/* sensors */
+bool msw_imu_read(msw_imu_t *out);   /* g and deg/s */
+int  msw_mic_read(int16_t *mono, int max);     /* 16 kHz */
+/* I/O: the Grove port (pins: official docs first) */
+bool msw_grove_power(bool on);
+bool msw_grove_i2c(uint8_t addr, const void *tx, int ntx,
+                   void *rx, int nrx);
+// … also: gpio, uart, store_get/put, millis, rtc, log, exit
+</script>
+  </doc-schema>
+  <doc-ask id="api_v1">
+    <p>API の版 1 に何を入れますか？</p>
+    <label><input type="checkbox" name="api_v1" value="screen" checked> 画面・タッチ・ボタン・時刻・保存</label>
+    <label><input type="checkbox" name="api_v1" value="sound" checked> 音（ビープとミキサー）・振動・読み上げ</label>
+    <label><input type="checkbox" name="api_v1" value="imu" checked> IMU</label>
+    <label><input type="checkbox" name="api_v1" value="mic"> マイク <small>会話とマイクを分ける処理が要る</small></label>
+    <label><input type="checkbox" name="api_v1" value="io"> Grove の I/O <small>先に公式資料でピンを確かめる</small></label>
+  </doc-ask>
+
+  <doc-claim>
+    <p>描き方は 2 つある。lvgl の部品と、全画面のフレームバッファ。</p>
+    <doc-machine name="draw" caption="公式デモも同じ分け方をしている。流体だけが lvgl を止めて直接描く。">
+<script type="text/plain">
+machine draw initial lvgl
+state lvgl    # lvgl がアプリの画面を描く。電卓、鍵盤、設定画面向け。
+state frame   # lvgl は止まる。アプリが 466x466 のバッファに描き、本体が送る。ゲーム向け。
+state back    # アプリが終わる。lvgl が画面全体を描き直す。
+
+| lvgl | frame |
+| back | .     |
+
+lvgl  -fb->   frame : fb_begin
+frame -lv->   lvgl  : fb_end
+lvgl  -exit-> back  : exit
+frame -exit-> back  : exit
++ back -run-> lvgl  : 次のアプリ
+</script>
+      <div data-state="lvgl"><doc-mock frame="none" w="220"><template><div class="ui"><div class="dev"><div class="big" style="font-size:30px">12 × 7</div><div class="sm">= 84</div></div></div></template></doc-mock></div>
+      <div data-state="frame"><doc-mock frame="none" w="220"><template><div class="ui"><div class="dev" style="background:radial-gradient(circle at 40% 60%, #4fc3f7 0 18%, #0a3d62 19% 40%, #000 41%)"><div class="sm" style="position:absolute;top:24px">Score 123</div></div></div></template></doc-mock></div>
+      <div data-state="back"><doc-mock frame="none" w="220"><template><div class="ui"><div class="dev"><div class="grid"><div class="ic" style="background:#e4572e">⏱</div><div class="ic" style="background:#4fc3f7">🎹</div><div class="ic" style="background:#81c784">🧮</div></div></div></div></template></doc-mock></div>
+    </doc-machine>
+    <doc-note tone="info">frame の描画には、アプリが自分で M5GFX のスプライトを入れてもよい。2026-11-08 の実験で約 56KB だった（work/miniapp-runtime-study-2026-11-08-m5gfx.md）。</doc-note>
+  </doc-claim>
+
+  <doc-claim>
+    <p>出す関数は exports.list の 1 か所で決め、表・ヘッダ・stub を作る。</p>
+    <doc-code title="exports.list · sketch" lang="text">
+<script type="text/plain">
+# One line per symbol. A script makes msw_exports.c (ESP_ELFSYM_EXPORT),
+# sdk/include/msw_app.h and sdk/lib/libmsw_stub.so from this file.
+@api 1
+msw_screen
+msw_fb_begin
+msw_fb_present
+msw_tone
+msw_vibrate
+lv_obj_create
+lv_label_create
+lv_label_set_text
+lv_arc_create
+lv_obj_add_event_cb
+# lvgl: the widgets in the doc, not all of lvgl (about 0.7 MB if all)
+malloc
+free
+snprintf
+</script>
+      <doc-pin line="12" tone="warn" title="lvgl は全部出さない">出すと本体が最大約 0.7MB 大きくなる。</doc-pin>
+    </doc-code>
+  </doc-claim>
+
+  <doc-claim>
+    <p>音はミキサーに入り、鍵盤は押した瞬間に鳴る。会話中は止まる。</p>
+    <doc-calls title="音の流れ" caption="今の声の再生に、アプリの音を足す入口を 1 つ作る。">
+<script type="text/plain">
++ msw_pcm_write(mono, n)                         @ components/miniapp/msw_app_api.c:1
++   **app_ring_put**(mono, n)                    @ components/miniapp/msw_app_api.c:1
+~ muse_voice player                              @ components/muse/muse_voice.c:1
++   **mix_app**(out, n)                          @ components/muse/muse_voice.c:1   -- 返事の声が出ている間は 0 にする
+</script>
+    </doc-calls>
+  </doc-claim>
+</doc-claim>
+
+<!-- ═════ 4 ═════ -->
+<doc-claim>
+  <p>アプリが落ちても、本体は再起動して顔に戻り、記録を Muse に返す。</p>
+  <doc-machine name="life" caption="アプリはメモリ保護がない。落ちたら本体ごと再起動する前提で守る。">
+<script type="text/plain">
+machine life initial launcher
+state launcher   # ランチャーまたは顔。アプリは動いていない。
+state loading    # ELF を PSRAM に読み、関数をつなぐ。
+state running    # アプリのタスクが動く。
+state crashed    # 本体が再起動した。次はアプリを開かない。
+
+| launcher | loading | running |
+| .        | crashed | .       |
+
+launcher -tap->     loading  : タップ / app.run
+loading  -ok->      running  : 準備完了
+loading  -bad->     launcher : 足りない関数
+running  -exit->    launcher : 長押し / exit
+running  -panic->   crashed  : 例外
+crashed  -boot->    launcher : 再起動
+</script>
+    <div data-state="launcher"><doc-mock frame="none" w="220"><template><div class="ui"><div class="dev"><div class="grid"><div class="ic" style="background:#e4572e">⏱</div><div class="ic" style="background:#4fc3f7">🎹</div><div class="ic" style="background:#81c784">🧮</div></div></div></div></template></doc-mock></div>
+    <div data-state="loading"><doc-mock frame="none" w="220"><template><div class="ui"><div class="dev"><div class="ic" style="background:#4fc3f7;width:56px;height:56px;font-size:26px">🎹</div><div class="sm">読み込み中</div></div></div></template></doc-mock></div>
+    <div data-state="running"><doc-mock frame="none" w="220"><template><div class="ui"><div class="dev"><div class="ring"></div><div class="big">24:59</div><div class="sm">作業中 · 1/4</div></div></div></template></doc-mock></div>
+    <div data-state="crashed"><doc-mock frame="none" w="220"><template><div class="ui"><div class="dev"><div class="err">鍵盤 が止まりました<br>記録は Muse に送れます</div><div class="sm">タップで閉じる</div></div></div></template></doc-mock></div>
+  </doc-machine>
+
+  <doc-claim>
+    <p>アプリは専用のタスクで動き、終了時に本体がタイマーと画面を全部外す。</p>
+    <doc-code title="msw_app.c · sketch" lang="c">
+<script type="text/plain">
+static void app_task(void *arg)
+{
+    app_t *a = arg;
+    rtc_mark_running(a->id);          /* RTC memory: survives a panic reboot */
+    esp_elf_request(&a->elf, 0, 0, NULL);   /* app_main: builds the screen, sets callbacks */
+    while (!a->stop) {
+        run_tick_and_button_callbacks(a);
+        vTaskDelay(1);
+    }
+    lvgl_lock();
+    lv_obj_delete(a->screen);         /* the app's objects go with its screen */
+    drop_callbacks_into(a->elf.text, a->elf.text_size);   /* timers, anims, events */
+    lvgl_unlock();
+    release_mic_audio_io(a);
+    esp_elf_deinit(&a->elf);
+    rtc_mark_running(NULL);
+    vTaskDelete(NULL);
+}
+</script>
+      <doc-pin line="13" tone="risk" title="アプリのコードを指すものを全部外す">外さないと、消したコードを呼んで落ちる。</doc-pin>
+    </doc-code>
+  </doc-claim>
+
+  <doc-claim>
+    <p>アプリ中は青を長く押すとアプリが終わる。黄は Muse と話す。</p>
+    <doc-code title="muse_input.c · sketch" lang="c" start="638">
+<script type="text/plain">
+    if (ev & MUSE_BTN_SPEAKER_PRESS) {
+        if (msw_app_running()) {                 /* museStopWatch: the app owns blue */
+            msw_app_button(MSW_BTN_BLUE, true);  /* a 1.5 s hold stops the app */
+            return;
+        }
+        muse_state_poke();
+</script>
+      <doc-pin line="639" title="アプリ中だけ横取りする">普段はスピーカーの ON/OFF のまま。</doc-pin>
+    </doc-code>
+    <doc-ask id="yellow">
+      <p>アプリ中の黄色ボタン（話すボタン）はどうしますか？</p>
+      <label><input type="radio" name="yellow" value="talk" checked> 今までどおり Muse と話す <small>アプリの音とマイクは止まり、返事の後に戻る</small></label>
+      <label><input type="radio" name="yellow" value="app"> アプリに渡す <small>ボタンが 2 つ使える。会話はアプリ終了後</small></label>
+    </doc-ask>
+  </doc-claim>
+</doc-claim>
+
+<!-- ═════ 5 ═════ -->
+<doc-claim>
+  <p>アプリは API でミニアバターと吹き出しを出せる。出すかはアプリが決める。</p>
+  <doc-mock frame="none" w="220" caption="本体は自動では出さない。アプリが呼んだときだけ lvgl の最上層に出す。"><template>
+<div class="ui"><div class="dev"><div class="ring"></div><div class="big">24:59</div>
+<div class="mini" data-ref="mini"><div class="av">◕‿◕</div><div class="bub">あと少し！</div></div></div></div></template>
+    <doc-pin ref="mini" anchor="bl" title="アプリが呼んだときだけ出る"></doc-pin>
+  </doc-mock>
+
+  <doc-claim>
+    <p>本体はアバター用の関数を出し、Muse の返事もアプリに渡す。</p>
+    <doc-schema id="avatar_api" lang="c" title="msw_app.h（アバター）· sketch" caption="frame の描き方のときは、本体が送る前にバッファへ重ねる。">
+<script type="text/plain">
+/* The app decides. The firmware never shows these by itself. */
+void msw_avatar_show(int x, int y, msw_mood_t mood);  /* x, y: centre */
+void msw_avatar_hide(void);
+void msw_bubble(const char *text, int ms);   /* ms 0 = until hidden */
+bool msw_muse_online(void);                  /* false: no Muse now */
+/* Muse's reply text, when the app wants to show it itself. */
+void msw_on_muse_reply(void (*cb)(const char *text, void *u), void *u);
+</script>
+    </doc-schema>
+  </doc-claim>
+</doc-claim>
+
+<!-- ═════ shared ═════ -->
+<doc-claim aux="shared">
+  <p>共通: アプリを置くフラッシュ領域と、elf_loader を足す。</p>
+  <doc-code diff file="partitions_musestopwatch.csv" start="32" lang="text">
+<script type="text/plain">
+ sano_model, data, 0x50,  0x830000, 0xC0000,
+ sano_dict,  data, 0x51,  0x8F0000, 0x100000,
++# museStopWatch: mini apps (FAT with wear levelling), apart from the app slots.
++apps,       data, fat,   0x9F0000, 0x400000,
+</script>
+    <doc-pin line="35" tone="info" title="4MB。後ろに約 2MB 残す">0x9F0000 から後ろは今は空き。</doc-pin>
+  </doc-code>
+  <doc-ask id="store">
+    <p>アプリ領域の大きさはどうしますか？</p>
+    <label><input type="radio" name="store" value="4m" checked> 4MB <small>約 50KB のアプリなら 80 本ほど。2MB 残す</small></label>
+    <label><input type="radio" name="store" value="6m"> 空きを全部（約 6MB）</label>
+    <label><input type="radio" name="store" value="1m"> 1MB</label>
+  </doc-ask>
+  <doc-note tone="warn">elf_loader（espressif/elf_loader 2.x）が IDF 6.0.3 で動くかは未確認。最初の試作で確かめる。</doc-note>
+</doc-claim>
+
+<!-- ═════ scope ═════ -->
+<doc-claim aux="scope">
+  <p>変えないもの</p>
+  <ul>
+    <li>Muse との接続、会話、返事の読み上げ（Sano）、OTA、設定の画面。</li>
+    <li>スクリプト言語（Lua、MicroPython）は入れない。アプリは ELF だけ。</li>
+    <li>アプリ同士の同時実行はしない。動くアプリは 1 つだけ。</li>
+    <li>アプリのサンドボックス（メモリ保護）は作らない。落ちたら再起動で守る。</li>
+    <li>出荷時デモのアプリをそのまま移すことはしない。例のアプリは新しく書く。</li>
+  </ul>
+</doc-claim>
+
+</doc-plan>
+</main>
+</body></html>

@@ -2,8 +2,24 @@
 
 ## 目的
 
-- M5Stack StopWatch（SKU C152）向けのファームウェアを開発する。
-- 具体的な機能目標は未確定。決まったら `work/development-status.md` とこの節を更新する。
+- M5Stack StopWatch（SKU C152）で Muse を動かす（2026-11-06 ユーザー決定）。
+- 参考は `C:\MyProj\kantanMuse`。ただし「Link 式」ではなく「Muse 式」で接続する。
+  SDK をそのまま使うのではなく、kantanMuse で作ったものの一部を取り込む。
+- Muse SDK の扱いは kantanMuse と同じ: 最新 SDK を導入し、必要なら改造し、
+  その後も公式の最新をマージしていく。
+- kantanMuse から参考にするもの:
+  - ボイス再生の仕組み（MP3 デコード・再生など）
+  - 説明を返すためのツールの doc 部分
+  - Web 設定、Wi-Fi の複数接続などの利便性の部分（特に重視）
+- 参考にしないもの: かんぷれ（楽器）としてのツール部分。
+- 導入するもの:
+  - システムメニューのような設定画面
+  - ミニアバター＋吹き出し（Muse がしゃべった言葉をそのまま出す）は**保留**（2026-11-07）。
+    まずは「公式＋α」で進め、返答は公式の字幕表示を使う
+  - ボイス再生コマンド
+  - SanoTTS-jp のローカル実行と、Muse 側から使える TTS 再生コマンド
+  - Muse に渡す doc に、日本語音声認識の案（kantanMuse で採用したもの）を入れてセットアップする
+- 音声の前に定型文は送らない（kantanMuse の voice preface はやらない）。音声だけを送る。
 
 ## 対象ハードウェア
 
@@ -52,9 +68,12 @@
 
 - `.claude/skills/html-plan/`: 実装計画を対話式の HTML 1枚にまとめる（`/html-plan <作るもの>`）。
   入手元は SOURCE.txt。計画ページは `work/plans/` に保存し、pack には node を使う。
+- `.claude/skills/msw-app/`: ミニアプリ（`apps/`、`components/miniapp`）の作成・ビルド・実機での確認。
+  Muse 向けの同じ内容は `components/miniapp/guide.md`（`app.doc`）。片方で学んだことはもう片方にも書く。
 
 ## 作業記録
 
 - 現在の状況・実測値・未確認事項は `work/development-status.md` に書く。
+- アイデアは `work/ideas.md` に番号（001〜）付きで記録する。番号は振り直さない。
 - まとまった調査や試行は `work/<内容>-YYYY-MM-DD.md` に残す。
 - サブエージェントはユーザーが頼んだときだけ使う。
