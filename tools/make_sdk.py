@@ -5,6 +5,7 @@
 Run after a firmware build (it needs the build's sdkconfig.h and the
 downloaded lvgl). Writes
   sdk/include/msw_app.h      the API (from components/muse_diy_stopwatch/miniapp/include)
+  sdk/include/muse_speaking.h  the official speaking gestures, for avatars
   sdk/include/sdkconfig.h    the firmware's configuration (lvgl reads it)
   sdk/include/lvgl/...       lvgl's headers (lvgl.h and src/**/*.h)
 so sdk/ is self-contained: sdk/build.py, the stub and these headers are all
@@ -18,6 +19,8 @@ FW = os.path.join(ROOT, "muse-gadget-sdk", "esp32")
 LVGL = os.path.join(FW, "managed_components", "lvgl__lvgl")
 CONFIG = os.path.join(FW, "build-muse-m5stack-stopwatch", "config", "sdkconfig.h")
 HEADER = os.path.join(FW, "components", "muse_diy_stopwatch", "miniapp", "include", "msw_app.h")
+# The official speaking gestures (header only, Apache 2.0): avatars use them as avatar/muse_pixel.c does.
+SPEAKING = os.path.join(FW, "components", "muse", "muse_speaking.h")
 OUT = os.path.join(ROOT, "sdk", "include")
 
 
@@ -26,6 +29,7 @@ def main():
         shutil.rmtree(os.path.join(OUT, "lvgl"))
     os.makedirs(OUT, exist_ok=True)
     shutil.copy2(HEADER, OUT)
+    shutil.copy2(SPEAKING, OUT)
     shutil.copy2(CONFIG, OUT)
     n = 0
     for base in ("lvgl.h", "lv_version.h"):
@@ -46,7 +50,7 @@ def main():
     with open(os.path.join(OUT, "esp_attr.h"), "w", encoding="utf-8", newline="\n") as f:
         f.write("/* museStopWatch SDK: stands in for ESP-IDF's esp_attr.h (tools/make_sdk.py). */\n"
                 "#pragma once\n#define IRAM_ATTR\n#define DRAM_ATTR\n#define EXT_RAM_BSS_ATTR\n")
-    print(f"sdk/include: msw_app.h, sdkconfig.h and {n} lvgl headers")
+    print(f"sdk/include: msw_app.h, muse_speaking.h, sdkconfig.h and {n} lvgl headers")
 
 
 if __name__ == "__main__":

@@ -610,3 +610,70 @@
   「やめる」「けす」を出すようにした（ユーザーの指示）。
 - ユーザーが画面で見た（会話の後の字幕、削除の確認。問題の報告なし）。
 - **未確認**: online で字幕が消えるか（ログの間に online が来なかった。来なければ 2 分で消える）。
+
+### 2026-11-09 追記: 009 アバターの差し替え
+
+- ユーザーの決定: A（ELF は 64x64 のマス目と色表を描くだけ。拡大はファームのまま）。
+  戻し方と選ぶ画面は、提案どおり（落ちる・重いと自動で公式へ。一覧は「公式」が一番上）。
+- 作り:
+  - API（msw_app.h）: `msw_avatar_define(&def)`、`def.render(pose, grid, palette)`（64x64、256 色）、
+    `def.accent(mode)`（なくてよい）、`MSW_MODE_*`。app.json に `"kind": "avatar"` →
+    `sdk/build.py` が magic "MSWV"、アイコンなしで作る。`msw_` は msw_avatar_define だけ（build.py と
+    時計の check_symbols の両方で断る）。
+  - 置き場: `<id>.mswava`（ランチャーと app.list には出ない）。16 個まで。app.install・app.remove・
+    app.source はアプリと共通。ELF の読み込みは load_elf にまとめた（アプリと共通）。
+  - 描画: avatar/muse_pixel.c の muse_pixel_render の頭で `msw_avatar_hook_render`（weak）を呼ぶ。
+    拡大（muse_pixel_scale・scale_px）が使う色表をポインタにして、アバターの 256 色に向ける。
+    ふち取りの暗い色（0.72 倍）はファームが毎フレーム作る。accent も `msw_avatar_hook_accent`。
+    **Muse が書き換えた muse_pixel.c（components/muse/avatar/）を使うときは、このフックも要る**。
+  - msw_avatar.c: 読み込み・入れ替え（s_lock の下で差し替え、古いものは後で解放）、選んだものは NVS
+    （"msw" / "avatar"）。描いている途中を RTC_NOINIT に記録 → 落ちて再起動したら公式に戻して app.log に書く。
+    3 秒の平均が 25 ms を超えたら公式に戻す（解放と NVS はサービスタスクで非同期: msw_app_service_async）。
+  - 選ぶ画面: muse_ui.c の文字盤の下にタイル（文字盤から上にスワイプ。weak の msw_avatar_build）。
+    「公式」＋名前の一覧、タップで切り替えて文字盤に戻る。
+  - Muse のコマンド: `app.avatar_list`（current、draw_ms、avatars）、`app.avatar_use`（id / "official"）。
+    シリアル: `>msw.app.avatars`、`>msw.app.avatar <id|official>`、試験用に `>msw.wake`（画面を起こす）。
+  - 見本: apps/shizuku（しずく、オリジナル）。1 フレーム 3.5 ms（最初は 5.5 ms。ソフトの割り算と fmodf を減らした。
+    浮動小数の割り算は __divsf3 でソフト）。
+- 実機の試験（シリアル）:
+  - しずくの入れ替え・上書き（表示中なら描き直す）、文字盤とアプリメニューの小さな Muse の両方に出る（スクリーンショット）。
+  - 重いアバター（37 ms）: 起動時に NVS から読み、3 秒で公式に戻った。
+  - 落ちるアバター: 再起動後「avatar avacrash crashed the device (in its render)」で公式から始まった。
+  - msw_log を呼ぶアバターは build.py が断る。
+- **未確認**: 上スワイプの一覧の見た目と操作（ユーザーに見てもらう）、Muse が作るところ。
+
+### 2026-11-09 追記: 009 を公式のアバター作り（avatar.py）に揃える
+
+- ユーザーの指示: 公式スキルとの差（指示の細かさ、全状態の確認、PC での検査、話す身ぶり）を 4 つとも埋める。
+  Muse 側は「スキル」の代わりに、手順書＋VM の検査＋時計のプレビューで同じ流れにする。
+- 公式の流れ（tools/muse/AVATAR_RECIPE.md、avatar_prompt.md、avatar.py）: PC が Muse に avatar_prompt.md を送る →
+  返った muse_pixel.c を PC で -Wall 付きで組み、全アニメーションを ASan で動かし、状態ごとの GIF を作る →
+  失敗は Muse に返して 2 回まで直させる → ファームを組んで書き込む。
+- 足したこと:
+  1. `app.avatar_doc`（miniapp/avatar_guide.md、埋め込み）: avatar_prompt.md を今の仕組みに合わせて書き直した手順書。
+     誰を描くか（Muse 自身のアバター、既存キャラ・Jollybot は不可、先頭コメントに名前・形・色・性格）、手順
+     （build.py → all.png → app.install → app.avatar_preview で 9 状態 → app.avatar_use → 直す）、API、見た目
+     （部品で組む、Bayer、1 px 輪郭、色の役割表、状態ごとの色と 1-exp(-dt*7) の混ぜ方）、全状態の動き、
+     muse_speaking.h の使い方、速さの決まり（ピクセルループは整数、割り算はソフト）。guide.md は短い案内だけにした。
+  2. `app.avatar_preview`（id、state、frames、seconds、scale、quality）: アバターをもう 1 つ読み込み、指定の状態を
+     25 fps で動かし（前に IDLE 0.5 秒、声の大きさは作り物）、コマを並べた JPEG と draw_ms を返す。画面とは別なので、
+     眠っていても、選んでいないアバターでも見られる。既定は 4 コマ 2 倍で 256x256、画質 60（約 9〜18 KB）。
+     最初は 3 倍・画質 75 で 30〜48 KB になり、Muse が文字で読むには大きすぎたので下げた。シリアルは
+     `>msw.app.avatar_preview <id> <state> [frames]`。
+  3. `sdk/build.py` の PC での試し実行: `"kind": "avatar"` のとき、VM の cc/gcc/clang で `sdk/avatar_host.c` と組み、
+     アドレスと UB のサニタイザー付きで 9 状態を時計と同じポーズで動かす。書き過ぎ・0 割りなどで止まり、全部黒い状態も失敗。
+     `build/preview/all.png`（1 行 1 状態）と状態ごとの PNG（Python だけで書く。PIL なし）。コンパイラがなければ飛ばす。
+     `MSW_HOST` のとき msw_app.h は lvgl を読まない（使う型は lv_obj_t と lv_font_t だけ）。
+  4. `muse_speaking.h`（公式の話す身ぶり、ヘッダーだけ、Apache）を tools/make_sdk.py で sdk/include にコピー。
+- しずくを手順書どおりに作り直した（状態ごとの色の混ぜ方、ランダムなまばたきと視線、小さな手、muse_speaking の身ぶり、
+  全状態の動き、ピクセルループは整数）。時計で 1 フレーム平均 1.8〜2.0 ms、最大 7.4 ms。9 状態ともプレビューで確認。
+- **未確認**: build.py の PC での試し実行（この PC にも WSL にも C コンパイラがない。avatar_host.c と shizuku.c が
+  MSW_HOST で通ることは Xtensa の gcc で確かめた）。Muse が手順書どおりに作れるか。上スワイプの一覧の見た目。
+
+## 呼び名を「Museストップウォッチ」に（2026-11-09、ユーザー決定）
+
+- Muse 向けの文書（stopwatch_guide.md 版 2026-11-09.3、guide.md、avatar_guide.md）と
+  stopwatch.doc の説明から「時計」をなくし、「Museストップウォッチ」か「本体」にした。
+  ガイドの冒頭に「時計の機能はない。時計とは呼ばない」と書いた。
+- そのまま: Muse アプリの一覧に出る名前（main/app.c の noise_ctrl_init の "Muse DIY StopWatch"）。
+  変えるとアプリ側の表示が変わるので、ユーザーに聞いてから。

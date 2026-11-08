@@ -16,6 +16,13 @@ Muse は同じ知識を、ファームに入っているガイド
 - 実行環境: `components/muse_diy_stopwatch/miniapp/msw_app_*.c`（一覧は `msw_app_priv.h`）
 - msw_* 以外にアプリが呼べる関数: `sdk/exports.list`
 - アプリ: `apps/<名前>/app.json` と `*.c`（blocks、pyoko、aquarium がお手本）
+- アバター（009）: `apps/shizuku`（`"kind": "avatar"`）。実行側は `msw_avatar.c`、描画のフックは
+  `avatar/muse_pixel.c` の `msw_avatar_hook_render`。シリアルは `>msw.app.avatars`、`>msw.app.avatar <id|official>`、
+  画面を起こすのは `>msw.wake`。状態ごとの絵は `>msw.app.avatar_preview <id> <state> [コマ数]`（Muse は
+  `app.avatar_preview`。JPEG の base64 行）。Muse 向けの作り方は `miniapp/avatar_guide.md`（`app.avatar_doc`）で、
+  公式の `tools/muse/avatar_prompt.md` を元にしている。`build.py` は PC の C コンパイラがあれば
+  `sdk/avatar_host.c` で全状態をサニタイザー付きで動かし `build/preview/*.png` を作る（`MSW_HOST`、lvgl なし）。1 フレーム 5 ms 以内（`>msw.app.avatars` に平均）。浮動小数の割り算はソフト
+  （`__divsf3`）なので、ループの中では逆数を掛ける。`fmodf` も重い。
 
 ## コマンド（ワークスペース直下、Git Bash か PowerShell）
 

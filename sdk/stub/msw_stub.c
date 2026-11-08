@@ -50,6 +50,7 @@ void msw_avatar_hide(void) {}
 void msw_bubble(void) {}
 void msw_on_muse_reply(void) {}
 void msw_muse_talk(void) {}
+void msw_avatar_define(void) {}
 void malloc(void) {}
 void calloc(void) {}
 void realloc(void) {}
