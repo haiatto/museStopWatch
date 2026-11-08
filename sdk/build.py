@@ -36,6 +36,7 @@ ROOT = os.path.dirname(SDK)
 API_VERSION = 1
 ICON = 32
 ICON_BG = (0x1A, 0x1F, 0x26)   # the launcher's icon ring
+SOURCE_MAX = 256 * 1024        # the app's files kept in the package (app.source)
 
 CFLAGS = [
     "-mlongcalls", "-Os", "-fPIC", "-ffunction-sections", "-fdata-sections",
@@ -106,6 +107,23 @@ def make_icon(meta):
     return struct.pack("<%dH" % len(px), *px)
 
 
+def make_source(app):
+    """The app's own files as one UTF-8 text, after "MSWS" and its length.
+    The watch keeps it with the app; app.source returns the text."""
+    names = sorted(n for n in os.listdir(app)
+                   if os.path.isfile(os.path.join(app, n))
+                   and (n == "app.json" or n.endswith((".c", ".h"))))
+    parts = []
+    for n in names:
+        text = open(os.path.join(app, n), encoding="utf-8").read()
+        parts.append(f"--- {n} ---\n{text}" + ("" if text.endswith("\n") else "\n"))
+    data = "".join(parts).encode("utf-8")
+    if len(data) > SOURCE_MAX:
+        print(f"note: source is {len(data)} bytes, over {SOURCE_MAX}: not kept in the package")
+        return b""
+    return b"MSWS" + struct.pack("<I", len(data)) + data
+
+
 def main():
     if len(sys.argv) != 2:
         sys.exit(__doc__)
@@ -153,14 +171,15 @@ def main():
 
     elf = open(so, "rb").read()
     icon = make_icon(meta)
-    body = icon + elf
+    source = make_source(app)
+    body = icon + elf + source
     head = struct.pack("<4sHH24s32sHHIII", b"MSWA", API_VERSION, version, app_id.encode(),
                        name, ICON if icon else 0, ICON if icon else 0, len(icon), len(elf),
                        zlib.crc32(body) & 0xFFFFFFFF)
     pkg = os.path.join(out, app_id + ".mswapp")
     with open(pkg, "wb") as f:
         f.write(head + body)
-    print(f"{os.path.relpath(pkg)}: {len(head) + len(body)} bytes (code {len(elf)}, icon {len(icon)})")
+    print(f"{os.path.relpath(pkg)}: {len(head) + len(body)} bytes (code {len(elf)}, icon {len(icon)}, source {len(source)})")
 
 
 if __name__ == "__main__":

@@ -453,3 +453,21 @@
   音量は本体の 設定 > Sound と書いた（版 2026-11-08.3）。COM5 に書き込み済み。
 - Muse の報告では、ファームの版が 999.0.0 と出ている（esp_app_desc の version）。OTA の「新しい版だけ」の判定に関わるので、
   Releases に上げる前に版の付け方を決める必要がある。
+
+### 2026-11-08 追記: Muse が作った dance（おどるアバター v6）で本体が落ちる
+
+- app.log: `dance was running at the last restart (it crashed the device)`。Muse は dance を v6 まで、piano（かんたん鍵盤）も作った。
+- シリアルで再現: 起動直後に LoadStoreError。msw_gfx_text ← msw_text_width ← アプリのティック（msw_api_tick）。
+  EXCVADDR 0x4239ed8e = アプリの命令の領域の中（entry 0x4239ed58）。命令の領域は 1 バイトずつ読めない。
+- 文字列がなぜ命令の領域にあるかは未確定。elf_loader は .got.loc があると .text から .got.loc までを命令の領域に置き、
+  その間に .rodata が入ることがある（esp_elf.c の「The gap can contain .rodata」）。dance のソースを見て確かめる。
+- 案: ソースを手に入れて ELF を調べ、build.py か実行環境で直す。あわせて、文字列を受け取る API で読めないアドレスなら
+  落ちずに app.log に書くようにする。未着手。
+
+## アプリのソースをパッケージに入れる（2026-11-08、ユーザーの案）
+
+- sdk/build.py: ELF の後に "MSWS" + 長さ + `--- name ---` 区切りの app.json・.c・.h（256 KB まで）。
+- 本体: check_package はぴったりの大きさか、この形を受け付ける。`msw_app_source()`（サービスタスクで読む）、
+  Muse の `app.source`（id、offset でページ）、シリアル `msw.app.src <id>`。guide.md・stopwatch_guide.md（版 .4）・スキルに書いた。
+- 実機: pyoko を入れ直し、`msw.app.src pyoko` で返ったソースが手元の main.c と同じ。dance（前に入れたもの）は no_source。
+- dance の原因調べは、Muse に新しい build.py で作り直して入れてもらってから（app.source でソースが取れる）。
