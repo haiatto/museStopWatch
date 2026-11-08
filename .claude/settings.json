@@ -9,13 +9,15 @@
       "PowerShell(git diff:*)",
       "PowerShell(git log:*)"
     ],
-    "ask": [
-      "Bash(git push:*)",
-      "PowerShell(git push:*)"
-    ],
     "deny": [
       "Bash(git push --force:*)",
-      "PowerShell(git push --force:*)"
+      "Bash(git push -f:*)",
+      "Bash(git -C * push --force:*)",
+      "Bash(git -C * push -f:*)",
+      "PowerShell(git push --force:*)",
+      "PowerShell(git push -f:*)",
+      "PowerShell(git -C * push --force:*)",
+      "PowerShell(git -C * push -f:*)"
     ]
   }
 }
