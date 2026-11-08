@@ -20,9 +20,31 @@ function Use-Idf {
     . (Join-Path $idfDir 'export.ps1') *> $null
 }
 
+# Our own OTA signing key, kept out of git (.tools/keys/). Without it the build
+# signs with the SDK's shared sample key (esp32/dev_signing_key.pem).
+$signKey = Join-Path $root '.tools\keys\msw_signing_key.pem'
+
+function Use-SigningKey {
+    if (-not (Test-Path -LiteralPath $signKey)) { return $null }
+    $keyPath = $signKey -replace '\\', '/'
+    $line = "CONFIG_SECURE_BOOT_SIGNING_KEY=`"$keyPath`""
+    $extra = Join-Path $root '.tools\keys\sdkconfig.signing'
+    Set-Content -LiteralPath $extra -Value $line -Encoding ascii
+    # Defaults only fill a new sdkconfig: change an existing one too.
+    $cfg = Join-Path $fwDir "$buildDir\sdkconfig"
+    if (Test-Path -LiteralPath $cfg) {
+        $text = Get-Content -LiteralPath $cfg -Raw
+        $new = $text -replace '(?m)^CONFIG_SECURE_BOOT_SIGNING_KEY=.*$', $line
+        if ($new -ne $text) { Set-Content -LiteralPath $cfg -Value $new -NoNewline -Encoding ascii }
+    }
+    return ($extra -replace '\\', '/')
+}
+
 function Invoke-Idf([string[]]$IdfArgs) {
     Use-Idf
     $defaults = "sdkconfig.defaults;devices/sdkconfig.muse;devices/sdkconfig.muse-$Board;devices/sdkconfig.musestopwatch"
+    $signing = Use-SigningKey
+    if ($signing) { $defaults += ";$signing" }
     Push-Location $fwDir
     try {
         # Our own components live one level down (components/muse_diy_stopwatch/*).

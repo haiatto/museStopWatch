@@ -62,6 +62,16 @@
 - ビルド成功は実機テストではない。画面表示や音はユーザーに確認してもらい、
   自分で見た・聞いたとは書かない。
 
+## OTA と署名
+
+- OTA の署名鍵は自分のもの（`.tools/keys/msw_signing_key.pem`、git 管理外。2026-11-08 ユーザー決定）。
+  鍵があれば `dev.ps1` がそれで署名し、なければ SDK の共有のサンプル鍵（`esp32/dev_signing_key.pem`）になる。
+  鍵の中身を出力・コミットしない。鍵を替えた後の最初の書き込みは USB で行う。
+- Muse に OTA させるファームの取得先は、配布元のリリースだけ
+  （`stopwatch_guide.md` の「ファームの更新」。今は haiatto/museStopWatch の Releases）。
+- 派生版（フォーク）を作るときは、自分の鍵を作り、`stopwatch_guide.md` の取得先と、
+  `guide.md` の SDK の clone 先を自分のリポジトリに書き換え、ガイドの版を上げる。
+
 ## Git
 
 - 公開リポジトリ: https://github.com/haiatto/museStopWatch （2026-11-06 ユーザー指示で公開）

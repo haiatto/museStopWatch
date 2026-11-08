@@ -430,3 +430,15 @@
   一度でも読み上げる（Muse の返事、voice.say、Voice level の見本）と、再起動までアプリの音が出なかった。
 - 直した: 読み上げのプレーヤーは起動時（msw_tts_register のコンストラクタ）に 1 回だけ入れる。
 - COM5 に書き込み、`msw.say` で読み上げた後に pyoko を起動。音が鳴ることをユーザーが確認（2026-11-08）。未コミット。
+
+## 自分の署名鍵と OTA の取得先（2026-11-08）
+
+- SDK の dev_signing_key.pem は共有のサンプル鍵（公式の最初のコミットから。sdkconfig.defaults に「出荷前に替える」）。
+  ユーザー判断で自分の鍵に替えた: `.tools/keys/msw_signing_key.pem`（RSA-3072、espsecure で生成、git 管理外）。
+- dev.ps1: 鍵があれば `.tools/keys/sdkconfig.signing` を作って SDKCONFIG_DEFAULTS に足し、既存の
+  build/sdkconfig の CONFIG_SECURE_BOOT_SIGNING_KEY も書き換える。鍵がなければサンプル鍵のまま。
+- ビルドした muse-gadget.bin は自分の鍵で検証 OK、サンプル鍵では失敗（espsecure verify-signature）。
+  COM5 に USB で書き込み、ws=up。以後の OTA は自分の鍵で署名したものだけが入る（未試験）。
+- stopwatch_guide.md（版 2026-11-08.2）に「ファームの更新」: 取得先は haiatto/museStopWatch の Releases の
+  muse-gadget.bin だけ、ほかの URL は実行前にユーザーに確かめる。CLAUDE.md と README に派生版の手順。
+- Releases にはまだ何も上げていない。

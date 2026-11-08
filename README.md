@@ -80,6 +80,19 @@ IMU の設定 [msw_bmi270_config.c](https://github.com/haiatto/muse-gadget-sdk/b
 - 読み上げのモデルと辞書は git に入れていません。入手先は
   [sanotts/model/README.md](https://github.com/haiatto/muse-gadget-sdk/blob/dev/stopwatch/esp32/components/muse_diy_stopwatch/sanotts/model/README.md) にあります。
 
+## OTA と派生版
+
+- Muse に `device.ota` を頼むと、[Releases](https://github.com/haiatto/museStopWatch/releases) の
+  `muse-gadget.bin` で本体を更新します（取得先は本体の総合ガイド
+  [stopwatch_guide.md](https://github.com/haiatto/muse-gadget-sdk/blob/dev/stopwatch/esp32/components/muse_diy_stopwatch/docs/stopwatch_guide.md) に書いてあります）。
+- ファームは自分の鍵で署名しています（鍵は git に入れていません）。本体は、今動いているファームと同じ鍵で
+  署名したものしか OTA で受け付けません。鍵がなければ、SDK の共有のサンプル鍵で署名されます。
+- 派生版を作るときは:
+  1. 自分の鍵を作る（`espsecure generate-signing-key --version 2 --scheme rsa3072 .tools/keys/msw_signing_key.pem`）。
+     最初の 1 回は USB で書き込む。
+  2. `stopwatch_guide.md` の取得先と、`miniapp/guide.md` の SDK の clone 先を、自分のリポジトリに書き換える。
+  3. ガイドの 2 行目の版を上げる（Muse が読み直すように）。
+
 ## ミニアプリ
 
 - Muse 向けの説明: 本体の `app.doc`（中身は [guide.md](https://github.com/haiatto/muse-gadget-sdk/blob/dev/stopwatch/esp32/components/muse_diy_stopwatch/miniapp/guide.md)）と `app.api`
