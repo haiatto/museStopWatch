@@ -11,3 +11,7 @@ upstream/
 # raw build, flash and serial logs (machine paths, device ids)
 work/logs-*/
 work/*.log
+
+# Local only, not in the repository (2026-11-10, user decision): the Zundamon avatar and its sources
+apps/zundaclaude/
+work/zundamon/

@@ -42,7 +42,7 @@ Muse は同じ知識を、ファームに入っているガイド
 
 ## 手順
 
-1. アプリを書く。絵・名前・音楽はオリジナルだけを使う（既存の作品の素材やキャラは使わない）。
+1. アプリを書く。
 2. ビルドする。「the firmware does not give: X」と出たら、別の関数を使うか、
    X を `sdk/exports.list` に足して作り直し、ファームもビルドし直す
    （lvgl の inline 関数は書き出せないので、それが中で呼ぶ関数を書き出す）。
@@ -113,3 +113,11 @@ Muse は同じ知識を、ファームに入っているガイド
   1.8 乗の曲線、デッドゾーンなし）。ジャンプは青ボタン。右上の縁に青い↑の印と、
   タイトルに操作の案内を出す。ユーザーの感想: デッドゾーンは不要で、傾きはそのまま
   反映し、非線形の曲線がよい。
+- マイク（2026-11-10、apps/mimi）: msw_mic_on / msw_mic_read / msw_mic_level。音声タスクが 20 ms ごとに読む音を
+  msw_app_mic.c のリング（PSRAM 1 秒）に分ける。待機中のほか、音を鳴らしている間も読む（muse_voice.c の play_player）。
+  Muse と話している間・返事の間・休止中は来ない（level -1）。実測: 毎秒 16000 サンプル、静かな部屋で振幅 50〜70（level 0）。
+  半分サイズの画面写真（shot）で、画面下の文字が二重に写ることがあった。原寸（shot full）では正しい。
+- 時刻・電池・歩数・PORT.A（2026-11-10、apps/sensors）: msw_time / msw_battery / msw_steps / msw_port_power /
+  msw_i2c_*。時刻は ui/msw_time.c（起動時に RTC から、Wi-Fi の IP 取得で SNTP、合わせたら RTC へ UTC で保存、JST-9）。
+  RTC・5V・歩数はボードの msw_board_rtc_get/set・msw_board_port_power・msw_board_imu_steps。PORT.A の I2C はアプリ用の
+  別バス（i2c_port -1、SDA G10・SCL G11、内蔵プルアップ）。歩数計は BMI270 の機能ページ 6 で有効にする（Bosch の SensorAPI どおり）。

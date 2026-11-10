@@ -677,3 +677,142 @@
   ガイドの冒頭に「時計の機能はない。時計とは呼ばない」と書いた。
 - そのまま: Muse アプリの一覧に出る名前（main/app.c の noise_ctrl_init の "Muse DIY StopWatch"）。
   変えるとアプリ側の表示が変わるので、ユーザーに聞いてから。
+
+## Muse からサイドチャットの部屋を足す（2026-11-10、ユーザーの案）
+
+- Muse のコマンド `side.add`（id、name は任意）: 一覧になければ足す。あれば足さない（name があれば名前だけ変える）。
+  話す先は切り替えない（会話の途中で切り替えると、その返事の接続が切れるため）。
+  `side.list`: 一覧と今の話す先。処理は msw_side.c の msw_side_put、コマンドは msw_doc.c。
+- 説明・エラーは日本語。ガイド版 2026-11-10.1。
+
+## ミニアプリのマイク（2026-11-10、ユーザーの案）
+
+- API: msw_mic_on(bool)、msw_mic_read(buf, max)、msw_mic_level()（0〜100、来ていないとき -1）。
+  miniapp/msw_app_mic.c（PSRAM のリング 1 秒）。muse_voice.c の idle_capture と play_player から弱参照の
+  msw_mic_tap で渡す。アプリが終わると切れる（msw_mic_app_end）。
+- 確認済み（シリアル）: apps/mimi で毎秒約 16000 サンプル、静かな部屋で振幅 50〜70。画面写真で表示。
+- 未確認: 話し声での反応、青ボタンの録音・再生（スピーカーがオフだった）、音を鳴らしながらの読み取り、
+  画面が消えたときの -1。
+- 半分サイズの画面写真で、画面下の文字が二重に写った（原寸では正しい）。shot の縮小を後で見る。
+
+## ミニアプリの時刻・電池・歩数・PORT.A（2026-11-10、ユーザーの案）
+
+- API: msw_time、msw_battery、msw_steps、msw_port_power、msw_i2c_begin/end/scan/write/read/write_read。
+  miniapp/msw_app_port.c、ui/msw_time.c、ボードに RTC（RX8130CE 0x32、UTC）・Grove 5V（PMIC PWR_CFG bit3）・歩数。
+  pmic_update をミューテックスで守った（電源 LED と 5V が同じレジスタ）。
+- 確認済み（シリアルと画面写真）: 起動 4.5 秒で SNTP が合わせて RTC に保存。apps/sensors で時刻・電池 100% 4.18 V・
+  USB 給電・歩数 0・PORT.A 何もなし、を表示。内部 RAM は heartbeat int=60K/34K で変わらず。
+- 未確認: 再起動後に RTC から時刻が戻るか（ネットなしで）、歩いたときの歩数、PORT.A に実際の Grove センサー、5V の出力。
+- 背面の拡張ピン（2.54 mm 7P・6P）は回路図でピンを確かめてから。今回は入れていない。
+
+## ウェイクワードの検討（2026-11-10、ユーザーの質問。まだ作っていない）
+
+- SDK に仕組みなし（register の is_wakeup_supported は false）。候補は WakeNet9（ESP-SR、S3 で 1 フレーム 32 ms に約 3 ms、
+  内部 16 KB・PSRAM 約 320 KB、既製は英中、日本語は Espressif に依頼）と microWakeWord（モデル約 60 KB、作業領域 23 KB〜、
+  既製は英語、自前で学習可）。ファームは 4 MB の枠に約 3.5 MB。
+- 電池で画面が消えている間に聞くと休止（コーデック off・light sleep）ができない。設定案: オフ / 画面がついている間 /
+  ＋USB 給電中はいつでも（初期値の案）/ いつでも。言い終わりの判定（無音で送る）が新しく要る。
+
+## ウェイクワードの試作 1（2026-11-10、microWakeWord）
+
+- 部品: components/muse_diy_stopwatch/wakeword（msw_wake.cc）。espressif/esp-tflite-micro 1.4.2、
+  esphome/esp-micro-speech-features 1.2.3（ESPHome と同じ前処理）。モデルは esphome/micro-wake-word-models の v2
+  （hey_jarvis、okay_nabu、vad。Apache-2.0、models/LICENSE・NOTICE）。alexa は商標なので入れていない。
+- 音: muse_voice.c の idle_capture から弱参照 msw_wake_feed で渡す（待機中だけ。話している間・返事の間・休止中は来ない）。
+  PSRAM のストリームバッファ 1 秒 → 専用タスク（PSRAM スタック、優先度 3）で 10 ms ごとに特徴量、3 スライスごとに推論。
+- 今はシリアルだけ: `>msw.ww on|off|stat`。反応すると `@msw.ww detected <名前>` と 120 ms 振動。初期値はオフ。
+- 実測: 推論 1 回 hey_jarvis 2.7 ms・okay_nabu 2.1 ms・vad 1.3 ms（30 ms ごと）。msw_cpu で msw_wake 25%（3 モデル）。
+  取りこぼし 0。内部 RAM はほぼ増えない（前処理の 11 KB は heap_caps_malloc_extmem_enable(0) で PSRAM へ）。
+  ファーム 3.87 MB（4 MB の枠、+約 0.33 MB）。
+- 未確認: 実際に「Hey Jarvis」「Okay Nabu」と言って反応するか、誤反応の頻度、画面が消えた USB 給電中の動き。
+- 次: 設定（オフ / 画面がついている間 / 画面がついている間＋USB 給電中。電池でいつでもは作らない。初期値オフ）、
+  反応したら話し始め、VAD で言い終わりを判定して送る。日本語の言葉は学習が要る。
+
+## ウェイクワードの試作 2（2026-11-10、設定と話し始め）
+
+- 設定: 本体の Settings > Wake word（Off / Screen on / Screen on + USB）。NVS の msw 名前空間 `wake_mode`、初期値 Off。
+  制御タスク msw_wake_ctl（PSRAM スタック）が 0.5 秒ごとに画面（muse_state_asleep）と USB（muse_state_on_battery）を見て入れ切りする。
+  Off の間は通知を待つだけで動かない。最初に入るときにモデルを読む。
+  ページは ui/msw_wake_ui.inc（muse_settings_ui.c が include、ウェイクワード部品へは弱参照）。Web 設定にはまだない。
+- 反応したら: `muse_input_app_talk(true)`（黄ボタンを押したのと同じ）＋ 120 ms 振動。そこからは VAD だけ動かし、
+  話し声の後 0.9 秒黙ったら離す。話し声が 6 秒来なければ・14 秒たったら離す。Muse メニューが開いている・ミニアプリがマイクを使っているときは始めない。
+- 音: 待機中は idle_capture → msw_wake_feed。話している間は record() と run_call() → 弱参照 msw_wake_turn_feed
+  （通話が待ち状態 READY のときはウェイクワードも聞く。Muse がしゃべっている間は聞かない）。
+- okay_nabu は外した（フラッシュ節約）。ファーム 3.63 MB、残り 380 KB。
+- シリアル: `>msw.ww off|screen|usb|test|stat`（off/screen/usb は設定を保存する。test は言葉を聞いたことにして話し始める）。
+- 実測: `>msw.ww test` で PTT down → 録音 → 話さずに 6.0 秒で離した（no speech）。内部 RAM は int=59K のまま。
+- 未確認: 「Hey Jarvis」と言って話し始め、言い終わりで送られるか。画面の表示。リアルタイム通話（PTT 通話）側での動き。
+  USB 給電で画面が消えているときに起こして話せるか。
+- 気になる点: 話さずに終わった回も録音を Muse に送ってしまう（音声メモのとき）。取り消す手段を後で考える。
+- 次: 「Hey Muse」のモデルを学習させる（microWakeWord の学習手順。英語なので合成音声は Piper のままでよい）。
+
+## ウェイクワード「Hey Muse」（2026-11-10、自前で学習）
+
+- 学習は WSL（Ubuntu 24.04）の `~/msw-wakeword`、RTX 4070 SUPER。手順は microWakeWord の basic_training_notebook に合わせ、
+  スクリプトは tools/wakeword/（setup.sh → data.py → gen.sh → features.py → train.sh、env.sh は学習環境の読み込み）。
+  sudo なし。uv を ~/.local/bin に入れ、Python 3.10 の環境を 2 つ（.venv-piper: torch と piper、.venv: TensorFlow）。
+- 詰まった所:
+  - torch（CUDA 13）と tensorflow[and-cuda]（CUDA 12）は同じ環境に入れるとライブラリがぶつかる → 環境を分けた。
+  - TensorFlow 2.21 は libcusolver.so.11 を自分で見つけられない → env.sh で nvidia/*/lib を LD_LIBRARY_PATH に足す。
+  - datasets 4 は音声の読み込みに torchcodec（と FFmpeg）が要る → datasets<4。
+  - AudioSet は tar から parquet に変わった（bal_train の 09 と 19 を使用）。piper-sample-generator はパッケージ形式に変わった
+    （`python -m piper_sample_generator`、PYTHONPATH にリポジトリ、webrtcvad の代わりに webrtcvad-wheels）。
+  - 学習には tensorboard が要る。
+- データ: 合成音声 5000（"hey muse" と "hey, muse" 各 2500、LibriTTS-R の話者を混ぜた声）。背景は MIT RIR 270・AudioSet 1000・FMA 210。
+  否定例は kahrendt/microwakeword の speech・dinner_party・no_speech（展開後 25 GB）。特徴量 4 GB。WSL の作業場所は全体で約 38 GB。
+- 学習: 10000 ステップ、約 40 分。テスト（合成音声と dinner_party_eval）: しきい値 0.97 で聞き逃し 6.4%・誤反応 0 回/時、
+  0.94 で 4.8%・0.19 回/時。実際の声でどうかは未確認。
+- ファーム: models/hey_muse.tflite（62 KB、arena 30000 のうち 26124 使用）を hey_jarvis と入れ替え。しきい値 0.97。
+  推論 1 回 2.1 ms（最大 12 ms）。ファーム 3.69 MB、残り 316 KB。
+- 実測（本体、静かな部屋で 1 分）: 誤反応 0、取りこぼし 0。
+- 注意: 背景音データの一部は非商用ライセンス（ノートブックの注意書き）。学習したモデルを公開ファームに入れてよいかは要確認。
+- C ドライブの空きが約 5 GB。WSL のディスクは中で消しても縮まない。
+- 未確認: 実際に「Hey Muse」と言って反応するか、話し始め・送信、誤反応の頻度（会話・テレビ）。
+
+## 返事の TTS がしゃべらないことがある（2026-11-10）
+
+- ユーザー: 「返答のttsが喋らないことがある」（ウェイクワードと関係なく起きる）。
+- ログ: `@msw.tts error no memory: arena 121872 B in psram (largest free 120832)` → `muse reply: 0.00s of audio`。
+  そのとき heartbeat は psram=710K（起動 2 時間後。起動直後は約 1.7 MB）。アプリは動いておらず、アバター zundacx は読み込み済み。
+  空きの量はあっても、ひと続きの 119 KB が取れなかった（細切れ）。
+- 直し: sanotts/msw_tts.c は、PSRAM の作業領域（arena、ids、pull_us）を起動時に取って持ち続ける（s_keep）。
+  ベンチと読み上げが同時なら、後の方が自分で取る（s_keep_busy）。PSRAM を約 120 KB 常に使う。
+- 確認: 書き込み後 `>msw.say` で 2 文しゃべった（ログ）。2 時間後に起きる状態はまだ再現・確認していない。
+- PSRAM が減っていた件（同日調査）: `>msw.mem psram`（PSRAM の使用ブロックの一覧、8 KB 以上はアドレス付き）を足して比べた。
+  起動 1 分後 used 3.01 MB・free 1.57 MB（最大 1.53 MB）→ 10 分後（会話 4 回）used 4.02 MB・free 551 KB（最大 483 KB）。
+  増えたのは 786432 B（TTS のモデルを PSRAM に写したもの）、192512 B（TTS のリング 6 秒）、30720 B（変換フィルター）で、
+  どれも最初の読み上げで 1 回だけ取って持ち続ける設計どおりのもの。リークではない。
+  2 時間後の 710 KB もこの分でほぼ説明がつく。それより長い時間で少しずつ減るかは未確認（heartbeat の psram= で見られる）。
+- 定常の空きは約 550 KB（TTS の作業領域を常に持つようにしたので、そこからさらに約 120 KB 少ない前提）。
+- 小さい音声バッファ（2026-11-10、ユーザー指示）: `CONFIG_MUSE_HATCH_COMPACT_BUFFERS=y` を devices/sdkconfig.musestopwatch に足した。
+  返事の MP3 512→128 KB、話しはじめのマイクのため置き 8→2 秒、デコード済みの音 2→1 秒。
+  起動後・TTS 前の psram= が 1584K → 2189K（約 600 KB 増）。`>msw.mem psram`: free 2188356（最大 2149732）。
+  TTS が 1 回しゃべった後の定常は約 1.15 MB の見込み（未測定）。長い返事・つながるまでの長い発話で音が切れないかは未確認。
+- 日本語フォントをフラッシュへ（2026-11-10、ユーザー指示）: ファームは PSRAM から動く（XIP）ので、
+  フォントの字の絵 830578 B もその分 PSRAM を使っていた。新しいパーティション `msw_font`（0xDF0000、1 MB、subtype 0x52）に置き、
+  最初の日本語の描画で esp_partition_mmap する（components/muse/fonts/muse_font_part.c、内部スタックの短いタスクで map）。
+  `tools/muse/split_cjk_noto_jp_font.py` が元の .c から `_part.c` と `.bin`（16 B の見出し MSWF・大きさ・FNV-1a）を作る。
+  パーティションがない・中身が違うときは `@msw.font error ...` で、日本語は □（落ちない）。パーティション表と font は USB でのみ書ける。
+  結果: .rodata 1.64 MB → 0.81 MB、起動後（TTS 前）の psram= 2189K → 2999K（`>msw.mem psram` free 3.02 MB）。
+  確認: ユーザーが画面の日本語を見て「問題なさそう」。返事の字幕と TTS も動いた（ログ）。未確認: フラッシュ書き込み中（NVS 保存・アプリの入れ替え）の日本語の描画。
+
+## アバター「ずんだもん Claude版」（2026-11-10、ユーザー依頼）
+
+- apps/zundaclaude（id zundaclaude）。ユーザーの参考画像（ずんだもん立ち絵素材）の大きい絵を切り抜いて 64 マス・40 色に（work/zundamon/sprite2.py → soft.py → gen.py が zunda_sprite.h を作る）。
+  目・口・ほお・首元の Claude 色のきらめき・効果は毎フレーム描く。全 9 状態を `>msw.app.avatar_preview` で確認、1 フレーム約 1 ms（最大 3.4 ms）。文字盤のスクリーンショットで表示を確認。
+- 残り: 起動時のつぶれ（0.6 秒）で頭の上に横線が出る。プレビューの JPEG に色の帯が出ることがある（本体の画面には出ていない。本体側のプレビュー処理の疑い、未調査）。
+- SKILL.md のオリジナル限定のきまりの例外（ユーザーの依頼）。**リポジトリには入れない**（ユーザー決定）。apps/zundaclaude/ と work/zundamon/ は .gitignore 済みで、この PC と本体にだけある。
+
+## 「オリジナルだけ」のルールを削った（2026-11-11、ユーザー指示）
+
+- ユーザー: 「museのルールで最初から書いてある制限ルール以外はカット。ossすら使えなくなってる」。
+- 公式 SDK（facebookincubator、tools/muse/avatar_prompt.md など）には、既存のキャラや素材を禁じるルールはない
+  （あるのは「自分のアバターを描く」「先頭コメントに名前・形・色・性格」だけ）。4 か所の独自ルールは前のセッションで足したもの。
+- 削った: SKILL.md の手順 1、miniapp/guide.md の「ルール」の 1 項目、avatar_guide.md の「既存のキャラクターをまねしない…Jollybot」、
+  stopwatch_guide.md の「絵・名前・音楽はオリジナルだけ」。stopwatch_guide の版は 2026-11-11.1（ファームの次のビルドで入る）。
+- 追記: ユーザー「テトリスに限定された話だったはず」。元は ideas.md 001（2026-11-08 ユーザー）の
+  「元のゲームの素材（絵・音・キャラ・名前）は使わない。遊び方の種類だけを参考にする。guide.md にも入れる」で、
+  既存のゲームを元にしたゲームだけの話だった。前のセッションがキャラ・素材全般に広げていた。
+  その範囲で guide.md の「ルール」と SKILL.md の手順 1 に戻した。avatar_guide.md と stopwatch_guide.md には戻さない。
+- 追記 2（同日、ユーザー決定）: 「ミニアプリの内容に関する余計な制限は不要。それは作る時にエージェントが考えるべき」。
+  guide.md と SKILL.md に戻した 1 項目も削った。内容（絵・キャラ・素材など）についてのルールは、ガイドにもスキルにも書かない。
