@@ -15,3 +15,4 @@ work/*.log
 # Local only, not in the repository (2026-11-10, user decision): the Zundamon avatar and its sources
 apps/zundaclaude/
 work/zundamon/
+work/app-backup-2026-11-11/

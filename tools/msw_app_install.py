@@ -39,7 +39,7 @@ class Port:
         """The first line starting with prefix; prints other @ lines."""
         end = time.time() + secs
         while time.time() < end:
-            d = self.s.read(4096)
+            d = self.s.read(self.s.in_waiting or 1)   # what has come: read(4096) waits the whole timeout
             if d:
                 self.buf += d
             while b"\n" in self.buf:
@@ -73,16 +73,27 @@ def main():
         return
     data = open(a.package, "rb").read()
     p.send(f"msw.app.put {len(data)}")
-    r = p.wait("@msw.app.put")
+    r = p.wait("@msw.app.put", 300)   # making room (compacting) can take a while
     if r != "@msw.app.put ready":
         sys.exit(f"put: {r}")
     t0 = time.time()
-    for off in range(0, len(data), CHUNK):
+    off = 0
+    while off < len(data):
         p.send("msw.app.data " + base64.b64encode(data[off:off + CHUNK]).decode())
         r = p.wait("@msw.app.data")
-        if not r or "failed" in r:
+        if r is None:
+            # A line or its answer gets lost now and then: ask where it is.
+            p.send("msw.app.putpos")
+            pos = p.wait("@msw.app.putpos")
+            if not pos or "failed" in pos:
+                sys.exit(f"data at {off}: no answer ({pos})")
+            off = int(pos.split()[1])
+            print(f"\nno answer: going on from {off}")
+            continue
+        if "failed" in r:
             sys.exit(f"data at {off}: {r}")
-        print(f"\r{min(off + CHUNK, len(data))}/{len(data)} bytes", end="", flush=True)
+        off = min(off + CHUNK, len(data))
+        print(f"\r{off}/{len(data)} bytes", end="", flush=True)
     print(f" in {time.time() - t0:.1f} s")
     p.send("msw.app.end")
     r = p.wait("@msw.app.end", 20)

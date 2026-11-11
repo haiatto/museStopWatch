@@ -1,6 +1,7 @@
 """Build a museStopWatch mini app into a .mswapp package.
 
     python sdk/build.py apps/<name>            -> apps/<name>/build/<id>.mswapp
+    python sdk/build.py apps/<name> --no-source   the same without the app's files
 
 An app is a folder with app.json and its .c files:
 
@@ -27,6 +28,13 @@ lines (<id>.elf, kept in build/ for addr2line on the ELF addresses in a
 crash report), and a check that links it against stub/msw_stub.c with
 --no-undefined, so a call the firmware does not give fails here and not on
 the watch.
+
+Files in the app's folder data/ go in the package as they are; the app
+reads them in place with msw_app_data("<name>", &size) (no copy in RAM).
+
+The package also keeps the app's files (app.json, .c, .h) as one text in
+zlib, which app.source returns. The package can be as large as the
+StopWatch's free package space; app.list says how much that is.
 """
 import glob
 import json
@@ -40,10 +48,11 @@ import zlib
 
 SDK = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(SDK)
-API_VERSION = 1
+API_VERSION = 2                # 2: msw_app_data and the data/ folder (2026-11-11)
 ICON = 32
 ICON_BG = (0x1A, 0x1F, 0x26)   # the launcher's icon ring
-SOURCE_MAX = 256 * 1024        # the app's files kept in the package (app.source)
+HEAD_FMT = "<4sHH24s32sHHIII"
+FILE_NAME_MAX = 47             # msw_pkg_file_t's name, less its NUL
 
 CFLAGS = [
     "-mlongcalls", "-Os", "-g", "-fPIC", "-ffunction-sections", "-fdata-sections",
@@ -115,8 +124,10 @@ def make_icon(meta):
 
 
 def make_source(app):
-    """The app's own files as one UTF-8 text, after "MSWS" and its length.
-    The watch keeps it with the app; app.source returns the text."""
+    """The app's own files as one UTF-8 text in zlib, after "MSWZ", the zlib
+    length and the text length. The watch keeps it with the app; app.source
+    returns the text. (Firmware before 2026-11-11 reads "MSWS" only: there
+    app.source says the app has no source.)"""
     names = sorted(n for n in os.listdir(app)
                    if os.path.isfile(os.path.join(app, n))
                    and (n == "app.json" or n.endswith((".c", ".h"))))
@@ -125,10 +136,36 @@ def make_source(app):
         text = open(os.path.join(app, n), encoding="utf-8").read()
         parts.append(f"--- {n} ---\n{text}" + ("" if text.endswith("\n") else "\n"))
     data = "".join(parts).encode("utf-8")
-    if len(data) > SOURCE_MAX:
-        print(f"note: source is {len(data)} bytes, over {SOURCE_MAX}: not kept in the package")
+    z = zlib.compress(data, 9)
+    return b"MSWZ" + struct.pack("<II", 4 + len(z), len(data)) + z, len(data)
+
+
+def make_data(app, at):
+    """The files in data/ as the "MSWD" section starting at offset at of the
+    package: count, then (name[48], offset, size) each, then the files,
+    16-aligned from the package's start (msw_app_priv.h)."""
+    d = os.path.join(app, "data")
+    if not os.path.isdir(d):
         return b""
-    return b"MSWS" + struct.pack("<I", len(data)) + data
+    names = sorted(n for n in os.listdir(d) if os.path.isfile(os.path.join(d, n)))
+    if not names:
+        return b""
+    for n in names:
+        if len(n.encode("utf-8")) > FILE_NAME_MAX:
+            sys.exit(f"data/{n}: names up to {FILE_NAME_MAX} bytes")
+    table_end = at + 8 + 4 + 56 * len(names)
+    pos, blobs, table = table_end, b"", b""
+    for n in names:
+        blob = open(os.path.join(d, n), "rb").read()
+        pad = (-pos) % 16
+        blobs += b"\0" * pad
+        pos += pad
+        table += struct.pack("<48sII", n.encode("utf-8"), pos, len(blob))
+        blobs += blob
+        pos += len(blob)
+    body = struct.pack("<I", len(names)) + table + blobs
+    print(f"data: {len(names)} files, {pos - table_end} bytes")
+    return b"MSWD" + struct.pack("<I", len(body)) + body
 
 
 def check_layout(elf):
@@ -241,9 +278,12 @@ def host_check(app, srcs, incs, out):
 
 
 def main():
-    if len(sys.argv) != 2:
+    args = sys.argv[1:]
+    keep_source = "--no-source" not in args
+    args = [a for a in args if a != "--no-source"]
+    if len(args) != 1 or args[0].startswith("-"):
         sys.exit(__doc__)
-    app = os.path.abspath(sys.argv[1])
+    app = os.path.abspath(args[0])
     meta = json.load(open(os.path.join(app, "app.json"), encoding="utf-8"))
     app_id = meta["id"]
     if not re.fullmatch(r"[a-z0-9_]{1,23}", app_id):
@@ -315,15 +355,18 @@ def main():
     elf = open(so, "rb").read()
     check_layout(elf)
     icon = b"" if avatar else make_icon(meta)
-    source = make_source(app)
-    body = icon + elf + source
-    head = struct.pack("<4sHH24s32sHHIII", b"MSWV" if avatar else b"MSWA", API_VERSION, version, app_id.encode(),
+    head_size = struct.calcsize(HEAD_FMT)
+    data = make_data(app, head_size + len(icon) + len(elf))
+    source, raw = make_source(app) if keep_source else (b"", 0)
+    body = icon + elf + data + source
+    head = struct.pack(HEAD_FMT, b"MSWV" if avatar else b"MSWA", API_VERSION, version, app_id.encode(),
                        name, ICON if icon else 0, ICON if icon else 0, len(icon), len(elf),
                        zlib.crc32(body) & 0xFFFFFFFF)
     pkg = os.path.join(out, app_id + ".mswapp")
     with open(pkg, "wb") as f:
         f.write(head + body)
-    print(f"{os.path.relpath(pkg)}: {len(head) + len(body)} bytes (code {len(elf)}, icon {len(icon)}, source {len(source)})")
+    print(f"{os.path.relpath(pkg)}: {len(head) + len(body)} bytes (code {len(elf)}, icon {len(icon)}, data {len(data)}, source {len(source)}"
+          + (f" in zlib, {raw} as text" if source else "") + ")")
     print(f"{os.path.relpath(debug_elf)}: for addr2line -pfiaC -e {os.path.relpath(debug_elf)} <ELF address from app.log>")
 
 

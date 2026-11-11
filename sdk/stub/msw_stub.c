@@ -57,6 +57,7 @@ void msw_i2c_read(void) {}
 void msw_i2c_write_read(void) {}
 void msw_store_put(void) {}
 void msw_store_get(void) {}
+void msw_app_data(void) {}
 void msw_muse_online(void) {}
 void msw_avatar_show(void) {}
 void msw_avatar_hide(void) {}

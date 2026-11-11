@@ -816,3 +816,101 @@
   その範囲で guide.md の「ルール」と SKILL.md の手順 1 に戻した。avatar_guide.md と stopwatch_guide.md には戻さない。
 - 追記 2（同日、ユーザー決定）: 「ミニアプリの内容に関する余計な制限は不要。それは作る時にエージェントが考えるべき」。
   guide.md と SKILL.md に戻した 1 項目も削った。内容（絵・キャラ・素材など）についてのルールは、ガイドにもスキルにも書かない。
+
+## ミニアプリが約 500 KB を超えると起動しない（2026-11-11、Muse の報告）
+
+- Muse の報告: Doom（555〜790 KB）が組み立てはできるが起動しない。「本体の読み込み上限が約 500 KB」と推測。
+- 実際は固定の上限ではなく、読み込み中の PSRAM 不足。app.log に `cannot read the app (765796 bytes)`
+  （ファイル全体のバッファが取れない）と `ELF relocation failed (-12)`（ENOMEM）があった。
+- 読み込み中に、ファイル全体のコピー・コード側の領域・データ側の領域の 3 つを同時に持っていた。
+  elf_loader（2.1.0）は `.text` の始まりから `.got.loc` の終わりまでをコード側に取る。build.py の ELF では
+  `.got.loc` が `.rodata` の後ろなので、`.rodata` がコード側とデータ側の 2 回入る。
+  Doom は WAD が `.rodata` なので、ほぼ 3 倍いった。badapple2（467 KB）は読み込むと PSRAM が約 1.2 MB 減っていた。
+- 直したこと（案 2）: `load_elf` はファイル全体を読まず、`esp_elf_relocate_source` でファイルから少しずつ読む。
+  `check_symbols` も、セクション表と .dynsym・.dynstr だけを読む。ENOMEM のときは `out_of_memory` と
+  空き・いちばん大きいひと続きを返す。実機: badapple2 は 107 ms で読み込み（前は 54 ms）、アバターも読める。
+- まだ: `.rodata` の二重（案 1: `.got.loc` を `.text` のすぐ後ろへ）。
+- 続き（同日）: パッケージを FAT から出して、ひと塊ずつフラッシュに置くことにした（下の節）。読み込みは
+  ファイルからではなく、マップしたパッケージから（`esp_elf_relocate`）。
+
+## ソースを zlib で入れる（2026-11-11、ユーザー決定）
+
+- 「ソースは圧縮するルールでよくて、容量大きくなるなら確認して入るなら入れる」「ソース付きで入れるかのオプション」。
+- build.py: ソースは "MSWZ" + zlib の長さ + テキストの長さ + zlib。256 KB の上限をやめ、パッケージが 1 MB
+  （PKG_MAX = MSW_APP_MAX_BYTES）に収まれば入れる。収まらなければソースなしで作り、知らせる。`--no-source` で入れない。
+  ELF とアイコンだけで 1 MB を超えるときはエラーにする。
+- 本体: "MSWZ" を ROM の tinfl で展開する（状態 11 KB は PSRAM）。"MSWS" も読む。`app.source` は
+  パッケージのうち ELF の後ろだけを読む（前は全体を読んでいた）。
+- 実機: mimi（テキスト 4637 B → 1766 B）を入れて `msw.app.src` で読み、main.c が元と同じだった。
+  前の形の piano も読めた。2026-11-11 より前のファームは "MSWZ" を読めない（ソースなしと答える）。
+
+## パッケージをひと塊ずつフラッシュに置く（2026-11-11、ユーザー決定）
+
+- ユーザー: 「これからどんどん入れるので容量を無駄にしたくない」「一塊にする。その上で足りない時のデフラグも可能にしたい」。
+  私が「今の作りを変えない」前提で小さい案（末尾の 1 MB にデータだけコピー、FAT とデータに分ける）から出し、
+  「変えないとか言ってない」と言われた（メモリ design-from-goal）。
+- FAT のファイルは 4 KB ずつ散らばり、ウェアレベリングで位置も入れ替わるので、マップしてもひと続きに見えない。
+- パーティション（partitions_musestopwatch.csv）: apps（FAT、保存データだけ）0x9F0000 512 KB、
+  msw_pkgs（0x53）0xA70000 0x490000（4668 KB 使える）、msw_font を 0xF00000 へ移した。
+  フラッシュの残りは 0（ota_0/1 は各 4 MB、ファーム 2.88 MB）。
+- msw_app_pkgs.c: セクター 0 は書式の印（"MSWP"）とジャーナル。各パッケージは 4 KB 境界から、32 バイトの
+  見出し（magic, seq, size, dead）+ パッケージ。size は書き終えて確かめてから書く（コミット）。起動時に
+  書きかけ・dead・CRC の合わないものを消し、同じ id が 2 つなら seq の新しい方を残す。印がなければ全体を
+  一度消す（初回 7.2 秒）。詰め直しは下から 4 KB ずつ写し、ジャーナルのビットを落とす。写し先は 1 セクター
+  以上下なので、途中で切れても写し元が残っていて、起動時に続きから終える。動いているアプリは動かさない。
+- 入れる: `msw_app_install_begin/write/end`。大きさがわかるとき（シリアル、まとめて受け取ったもの）は
+  ちょうど入るいちばん小さいすき間、なければ詰め直す。わからないとき（VM からの app.install）は
+  いちばん大きいすき間に書き、あふれたら詰め直して、VM から最初から読み直す（image_fetch_vm_stream、
+  sink が 1 を返す）。1 MB の上限はなくなった（app.list の max_app_bytes = 空き）。
+- `msw_app_data(name, &size)`（API 2）: build.py が `data/` のファイルを "MSWD" に入れる（16 バイト境界）。
+  動いているアプリのパッケージの中を指す。
+- 移行: 書き込む前に、アプリ領域 4 MB を esptool で読み（全体の読み出しはデータ化けで 2 回失敗、512 KB ずつなら通った）、
+  IDF の fatfsparse.py（--wl-layer enabled、IDF の Python に construct がある）でファイルを取り出した。
+  パッケージ 15 個（CRC 全部 OK）と保存データ 2 つを work/app-backup-2026-11-11/（git 管理外）に置き、
+  backups/apps-fat-COM5-20261111.bin も残した。全部入れ直した。保存データ（blocks・pyoko のハイスコア）は
+  戻していない（書き込むコマンドがない）。
+- 実機: 1.5 MB のデータを 94 ms で読めた（ハッシュ一致、読み込み後の PSRAM 空き 3.0 MB）。2 つ消してすき間を作り、
+  すき間より大きい 2.3 MB を入れると詰め直しが動いた。詰め直しの途中でリセットしても、起動時に
+  「finishing a package move」で終わり、移動したアプリのデータも正しかった。起動時の確認は 15 個 4.2 MB で 0.3 秒。
+- シリアルのインストーラーは 1 行ごとに 0.2 秒待っていた（pyserial の read(4096) がタイムアウトまで待つ）。
+  届いた分だけ読むようにして 35 倍速く（9.6 KB で 3.5 秒 → 0.1 秒）。2.3 MB の途中で返事が 10 秒来ないことが
+  2 回あった（原因不明）。`msw.app.putpos` で位置を聞いて続きから送るようにした。
+- まだ確かめていない: VM からの app.install（Muse から。大きさがわからない流れ、あふれたときの読み直し）。
+
+## 2026-11-11（夜）: Muse の Doom（VM からの入れ直し）、遅れて来る返事のログ
+
+- VM からの app.install が動いた: 22:43 に Muse が doom_probe.mswapp（559360 B）を入れた
+  （`link.image ... done, 559360 bytes in parts` → `installed doom v1`）。Muse の話では読み込み・配置も通った。
+- Muse の報告: 読み込み直後の空き約 850 KB で、画面用の約 430 KB も、作業メモリ 1 MB も取れなかった。その後
+  アプリが止まらず（app.stop が効かない）、ユーザーがリセットした。
+  - 止まらない理由: app.stop は旗を立てるだけ（msw_app_stop → s_stop）。アプリが app_main や
+    コールバックから戻らないと、旗を見られない（watch() が「restart the device」とログに出す、設計どおり）。
+    app_main は display_lock を持ったまま呼ぶので、戻らないと画面も止まる。
+  - 空き: Doom を入れる前の 22:42 で heartbeat の psram= が 561K（起動から 5.5 時間）。リセット直後の
+    `>msw.mem psram` は free 2990804（最大 2915464）。TTS が最初の読み上げで約 1 MB 取る分を引いても、
+    約 1.4 MB の行き先がわからない（前の Doom の試しが残っていたのか、漏れなのか、未調査）。
+- 遅れて来る返事（タスクの後の Muse の報告が本体に出ない）: work/logs-2026-11-11/events.log（ev_logger.py で記録）。
+  返事待ちでないときの delta.* は捨てている。本体から始めた仕事の返事の chat_context は device: mcu-wearable、
+  Muse アプリからの会話は device_id（端末の UUID）。message.assistant の行は別の番号（seq）で来るので、
+  今のコードは 1 つの s_last_seq で見て捨てている（ログにも出ない）。公式は b4bee64（11/10）で、覚えた
+  リクエストへの message.assistant（reply_to_message_id）を後から読むようにした。こちらは 463bd2a のまま。
+- 記録は 23:03 に、本体の `sleep: Incorrect wakeup source (4) to disable.` の直後に COM5 が切れて止まった。
+
+### 2026-11-11 追記: アプリのたびに PSRAM が 16 KB 減る件、止まらないアプリの強制停止
+
+- ユーザーの指示: 「最初の二つを」（PSRAM の行き先と強制停止）。遅れる返事の件は後でじっくり。
+- 測り方: scratchpad の memcycle.py（`>msw.app.run` → 4 秒 → `>msw.app.stop` → `>msw.mem psram`）。
+  6 本を 1 回ずつ動かすと、止めるたびに used が 16416 B（1 ブロック）ずつ増えていた。
+- 原因: アプリのタスクは xTaskCreatePinnedToCoreWithCaps（スタック 16 KB を PSRAM）で作り、終わりに
+  vTaskDelete(NULL) を呼んでいた。WithCaps のタスクはこれだとスタックと TCB が解放されない
+  （msw_stack.h の注意どおり）。vTaskDeleteWithCaps(NULL) に直した。ほかの WithCaps のタスクは正しかった。
+  5.5 時間で 1.4 MB ＝ 約 87 回分。直した後は 6 回動かして止めても ±100 B。
+- 強制停止: アプリのコードは画面のロック（esp_lv_adapter の再帰ミューテックス）を持ったまま動くので、
+  タスクだけ消すとロックが残る。止める指示（app.stop、ランチャー、黄ボタン 1.5 秒長押し）から
+  5 秒たってもコードが戻らないと、watch()（1 秒ごとの esp_timer）が msw_crash_stuck() で
+  アプリのタスクを止めて場所（バックトレース）とログ 6 行を RTC に残し、esp_restart() する。
+  次の起動で app.log に `STUCK:` の報告。app.stop の返事には、戻らない間 `note` が付く。
+- 実機: 戻らないテストアプリ（app_main で回り続ける）で、`>msw.app.stop` の 5 秒後に再起動し、
+  `STUCK:  #0 app hangtest, ELF 0x1a2` が addr2line でループの行（main.c:7、app_main の中）を指した。
+  テストアプリは消した。**未確認**: 黄ボタンの長押しでの強制停止（ユーザーに押してもらう）、
+  Muse の app.stop からの流れ、Doom で実際にどこで止まっていたか。
