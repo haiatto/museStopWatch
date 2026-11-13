@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 700" width="760" height="700" font-family="'Noto Sans JP','Hiragino Sans','Yu Gothic UI','Meiryo',sans-serif">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8a94a6"/>
+    </marker>
+  </defs>
+  <rect width="760" height="700" rx="20" fill="#f4f6fa"/>
+
+  <!-- launcher: muse_ui.c tile left of the face; msw_app_launcher.c round icons, 3 a row, name under -->
+  <g transform="translate(130,200)">
+    <circle r="92" fill="#111722"/>
+    <text y="-56" text-anchor="middle" font-size="13" fill="#ffffff">アプリ</text>
+    <g font-size="8" fill="#cfd6e4" text-anchor="middle">
+      <circle cx="-40" cy="-22" r="16" fill="#e5a93c"/><text x="-40" y="4">アプリ</text>
+      <circle cx="0" cy="-22" r="16" fill="#58b38a"/><text x="0" y="4">アプリ</text>
+      <circle cx="40" cy="-22" r="16" fill="#5b8fe0"/><text x="40" y="4">アプリ</text>
+      <circle cx="-40" cy="28" r="16" fill="#d9707f"/><text x="-40" y="54">アプリ</text>
+      <circle cx="0" cy="28" r="16" fill="#9a7ad6"/><text x="0" y="54">アプリ</text>
+    </g>
+    <text y="122" text-anchor="middle" font-size="16" font-weight="bold" fill="#253044">ランチャー</text>
+    <text y="142" text-anchor="middle" font-size="12" fill="#5b6578">入れたミニアプリが並ぶ</text>
+  </g>
+
+  <!-- face: yellow button upper left, blue upper right (stopwatch_guide.md) -->
+  <g transform="translate(380,200)">
+    <circle r="98" fill="#c9ced8"/>
+    <circle r="92" fill="#111722"/>
+    <rect x="-82" y="-80" width="22" height="10" rx="5" fill="#e5c33c" transform="rotate(-45 -71 -75)"/>
+    <rect x="60" y="-80" width="22" height="10" rx="5" fill="#4a8fe0" transform="rotate(45 71 -75)"/>
+    <text y="-52" text-anchor="middle" font-size="11" fill="#8fa0c0" letter-spacing="2">READY</text>
+    <path d="M-28,52 C-34,4 -32,-32 0,-36 C32,-32 34,4 28,52 Z" fill="#d8c9ad"/>
+    <circle cx="-10" cy="-6" r="4" fill="#253044"/>
+    <circle cx="10" cy="-6" r="4" fill="#253044"/>
+    <path d="M-6,6 Q0,12 6,6" stroke="#253044" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <text y="122" text-anchor="middle" font-size="16" font-weight="bold" fill="#253044">文字盤</text>
+    <text y="142" text-anchor="middle" font-size="12" fill="#5b6578">青ボタンで話す。返事は字幕と声</text>
+  </g>
+  <g font-size="11" fill="#5b6578">
+    <text x="296" y="114" text-anchor="end">黄ボタン</text>
+    <text x="464" y="114">青ボタン</text>
+  </g>
+
+  <!-- settings: tile right of the face; build_home() rows -->
+  <g transform="translate(630,200)">
+    <circle r="92" fill="#111722"/>
+    <text y="-56" text-anchor="middle" font-size="12" fill="#ffffff" letter-spacing="1">SETTINGS</text>
+    <g font-size="12" fill="#e8ecf4">
+      <rect x="-62" y="-42" width="124" height="22" rx="6" fill="#2a3346"/><text x="-52" y="-27">QR</text>
+      <rect x="-62" y="-15" width="124" height="22" rx="6" fill="#2a3346"/><text x="-52" y="0">Wi-Fi</text>
+      <rect x="-62" y="12" width="124" height="22" rx="6" fill="#2a3346"/><text x="-52" y="27">Muse</text>
+      <rect x="-62" y="39" width="124" height="22" rx="6" fill="#2a3346"/><text x="-52" y="54">Bluetooth</text>
+    </g>
+    <text y="122" text-anchor="middle" font-size="16" font-weight="bold" fill="#253044">設定</text>
+    <text y="142" text-anchor="middle" font-size="12" fill="#5b6578">公式の設定に日本語の説明と QR など</text>
+  </g>
+
+  <!-- avatar picker: tile under the face; msw_avatar.c list, "公式" first, check on the one in use -->
+  <g transform="translate(380,530)">
+    <circle r="92" fill="#111722"/>
+    <text y="-56" text-anchor="middle" font-size="13" fill="#ffffff">アバター</text>
+    <g font-size="12" fill="#ffffff" text-anchor="middle">
+      <rect x="-64" y="-40" width="128" height="26" rx="13" fill="#2f5c45"/><text y="-22">✓ 公式</text>
+      <rect x="-64" y="-6" width="128" height="26" rx="13" fill="#2a3346"/><text y="12">作ったアバター</text>
+      <rect x="-64" y="28" width="128" height="26" rx="13" fill="#2a3346"/><text y="46">作ったアバター</text>
+    </g>
+    <text y="74" text-anchor="middle" font-size="9" fill="#80888f">↓ 下にスワイプでもどる</text>
+    <text y="122" text-anchor="middle" font-size="16" font-weight="bold" fill="#253044">アバター選び</text>
+    <text y="142" text-anchor="middle" font-size="12" fill="#5b6578">Muse に作ってもらって、タップで替える</text>
+  </g>
+
+  <!-- an app with its menu: msw_app_menu.c name, mini Muse and bubble, つづける / おわる -->
+  <g transform="translate(130,530)">
+    <circle r="92" fill="#1d3550"/>
+    <rect x="-72" y="-62" width="144" height="122" rx="12" fill="#111722" stroke="#e5c33c" stroke-width="2.5"/>
+    <text y="-44" text-anchor="middle" font-size="11" fill="#e8ecf4">アプリの名前</text>
+    <path d="M-56,-4 C-58,-22 -55,-32 -46,-33 C-37,-32 -34,-22 -36,-4 Z" fill="#d8c9ad"/>
+    <rect x="-26" y="-34" width="90" height="30" rx="6" fill="#ffffff"/>
+    <path d="M-26,-22 L-32,-18 L-26,-14 Z" fill="#ffffff"/>
+    <text x="-20" y="-22" font-size="8" fill="#253044">青ボタンを おして</text>
+    <text x="-20" y="-11" font-size="8" fill="#253044">はなしてね</text>
+    <rect x="-52" y="4" width="104" height="20" rx="10" fill="#81c784"/>
+    <text y="18" text-anchor="middle" font-size="11" fill="#14301c">つづける</text>
+    <rect x="-52" y="30" width="104" height="20" rx="10" fill="#ef9a9a"/>
+    <text y="44" text-anchor="middle" font-size="11" fill="#3a1418">おわる</text>
+    <text y="122" text-anchor="middle" font-size="16" font-weight="bold" fill="#253044">ミニアプリ</text>
+    <text y="142" text-anchor="middle" font-size="12" fill="#5b6578">黄ボタンでメニュー</text>
+  </g>
+
+  <!-- arrows: the head is the screen that comes; the word is the swipe -->
+  <g stroke="#8a94a6" stroke-width="2.5" fill="none" marker-end="url(#ar)">
+    <path d="M276,200 L228,200"/>
+    <path d="M484,200 L532,200"/>
+    <path d="M380,362 L380,432"/>
+    <path d="M130,362 L130,432"/>
+  </g>
+  <g font-size="13" fill="#253044" text-anchor="middle">
+    <text x="252" y="190">右へ</text>
+    <text x="508" y="190">左へ</text>
+    <text x="392" y="402" text-anchor="start">上へ</text>
+    <text x="142" y="402" text-anchor="start">タップ</text>
+  </g>
+  <g font-size="12" fill="#5b6578">
+    <text x="540" y="480">矢印の先に出る画面。</text>
+    <text x="540" y="498">文字はスワイプの向き。</text>
+    <text x="540" y="516">メニュー中は青ボタンで</text>
+    <text x="540" y="534">Muse と話せる。</text>
+  </g>
+  <g font-size="11" fill="#8a94a6">
+    <text x="540" y="568">（説明用の絵で、</text>
+    <text x="540" y="584">実際の画面とは違う）</text>
+  </g>
+</svg>
