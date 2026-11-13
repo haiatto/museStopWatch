@@ -1142,3 +1142,19 @@
   人が組み立てた .mswapp はそのまま入れない。ネットのソースは組み立てる前に読んで確かめる。
   ファームで止める仕組み（ソースのない .mswapp を断るなど）は作っていない（文書だけ）。
 - 置き場は今の apps/ のまま（別のフォルダは作っていない）。これは私の案で、ユーザーが選んだものではない。
+
+## 2026-11-14: API 4（UART、JPEG、ニューラルネットの層）
+
+- きっかけ: Muse が Unit CAM（U109）は UART で画像を送ると調べ、ユーザーが UART を足したいと。M5 公式の受け側の例
+  （M5-ProductExampleCodes Unit/UNIT_CAM/CAM2CORE）では 1.5 Mbps、`AA 55`＋長さ 4 バイト＋XOR＋コマンド＋JPEG＋XOR、
+  1 枚 16 KB まで、M5Core では白で受け黄で送る。Unit CAM 側のピンの表は読めていない。資料には既定 115200 とも書かれている。
+- ユーザー:「とりあえずapiとしては公開しつつ新たな容量は今回はなるべく増やさずやる」。
+- msw_uart_begin/available/read/write/end（msw_app_port.c）。PORT.A の関数なので起動前の画面が出る（is_port_fn、build.py）。
+- msw_jpeg_size / msw_jpeg_decode(…, shrink)（msw_app_jpeg.c、ROM の TJpgDec）。最初は esp_new_jpeg のデコーダーで
+  作ったが、ファームが約 72 KB 増えた（総サイズ 3,109,421 → ROM に替えて 3,036,837 バイト）。
+- msw_nn_conv/dwconv/fc/max_pool/avg_pool と scratch の大きさ（msw_app_nn.c）。ファームにすでにある esp-nn。
+  ウェイクワードの Invoke と同じロック。
+- 変更前の総サイズは測っていない（.bin は前と同じ 0x2F1000）。新しいファイルは合わせて約 5.4 KB、esp-nn の
+  avg pool・fc などが少し増えた。
+- **未確認**（実機）: どれも実機で動かしていない。UART の速さ・取りこぼし、JPEG の速さ、esp-nn の結果の正しさ、
+  ウェイクワードとの同時実行。試しのアプリ（scratch）が組み立てられることだけ確かめた。

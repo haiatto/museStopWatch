@@ -152,3 +152,9 @@ SDK とファームの組（2026-11-13）: Muse は VM で、`app.doc`（ファ�
 - サンプル置き場は apps/（2026-11-14）: ソースだけ（.mswapp は .gitignore）、外のソースや素材を使わずに作ったものだけ
   （ユーザー:「外部ソースなしに作った感じのやつとします」）。apps/README.md に一覧。ガイドの「ほかから持ってきたアプリ」:
   apps/ やネットのアプリも、Muse が自分の VM でソースから組み立てる。
+- API 4（2026-11-14）: msw_uart_*（PORT.A の UART。UART1、ドライバーの受信 2 KB は内蔵、タスクが PSRAM の 64 KB に移す。
+  あふれたら新しい分を捨て、終わりに app.log へ数を出す）、msw_jpeg_size / msw_jpeg_decode（ROM の TJpgDec。
+  esp_new_jpeg のデコーダーは約 72 KB 増えたのでやめた）、msw_nn_*（esp-nn の conv・dwconv・fc・max/avg pool を
+  確かめて呼ぶだけ）。esp-nn は層の種類ごとに作業用ポインタが 1 つだけなので、msw_nn_lock で 1 層ずつ。
+  ウェイクワードの Invoke も同じロックを取る（msw_wake.cc）。ユーザー:「とりあえずapiとしては公開しつつ
+  新たな容量は今回はなるべく増やさずやる」。

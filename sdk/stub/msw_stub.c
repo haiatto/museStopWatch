@@ -28,6 +28,8 @@ void msw_gfx_line(void) {}
 void msw_gfx_circle(void) {}
 void msw_gfx_fill_circle(void) {}
 void msw_gfx_blit(void) {}
+void msw_jpeg_size(void) {}
+void msw_jpeg_decode(void) {}
 void msw_gfx_text(void) {}
 void msw_text_width(void) {}
 void msw_sprite_from_art(void) {}
@@ -56,6 +58,18 @@ void msw_i2c_write(void) {}
 void msw_i2c_read(void) {}
 void msw_i2c_write_read(void) {}
 void msw_pin_read(void) {}
+void msw_uart_begin(void) {}
+void msw_uart_available(void) {}
+void msw_uart_read(void) {}
+void msw_uart_write(void) {}
+void msw_uart_end(void) {}
+void msw_nn_conv_scratch(void) {}
+void msw_nn_conv(void) {}
+void msw_nn_dwconv_scratch(void) {}
+void msw_nn_dwconv(void) {}
+void msw_nn_fc(void) {}
+void msw_nn_max_pool(void) {}
+void msw_nn_avg_pool(void) {}
 void msw_store_put(void) {}
 void msw_store_get(void) {}
 void msw_app_data(void) {}

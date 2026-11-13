@@ -17,7 +17,7 @@ An app is a folder with app.json and its .c files:
     }
 
 "port" is needed when the app uses PORT.A (msw_port_power, msw_i2c_begin,
-msw_pin_read), in words for the user: "connect", what to plug into PORT.A
+msw_pin_read, msw_uart_begin), in words for the user: "connect", what to plug into PORT.A
 (up to 120 bytes), and "about", what the app does with it (up to 240 bytes).
 The StopWatch shows both before the app starts, and the app runs only after
 the user taps "はじめる" holding the blue button. They go in the package as
@@ -57,8 +57,9 @@ import zlib
 
 SDK = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(SDK)
-API_VERSION = 3                # 2: msw_app_data and the data/ folder (2026-11-11); 3: msw_pin_read, "port" (2026-11-13)
-PORT_FNS = ("msw_port_power", "msw_i2c_begin", "msw_pin_read")   # msw_app_core.c is_port_fn
+API_VERSION = 4                # 2: msw_app_data and the data/ folder (2026-11-11); 3: msw_pin_read, "port" (2026-11-13);
+                               # 4: msw_uart_*, msw_jpeg_*, msw_nn_* (2026-11-14)
+PORT_FNS = ("msw_port_power", "msw_i2c_begin", "msw_pin_read", "msw_uart_begin")   # msw_app_core.c is_port_fn
 PORT_CONNECT_MAX = 120
 PORT_ABOUT_MAX = 240
 ICON = 32
