@@ -16,3 +16,6 @@ work/*.log
 apps/zundaclaude/
 work/zundamon/
 work/app-backup-2026-11-11/
+
+# built mini apps: only the sources go in apps/ (2026-11-14)
+*.mswapp
