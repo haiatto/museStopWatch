@@ -158,3 +158,6 @@ SDK とファームの組（2026-11-13）: Muse は VM で、`app.doc`（ファ�
   確かめて呼ぶだけ）。esp-nn は層の種類ごとに作業用ポインタが 1 つだけなので、msw_nn_lock で 1 層ずつ。
   ウェイクワードの Invoke も同じロックを取る（msw_wake.cc）。ユーザー:「とりあえずapiとしては公開しつつ
   新たな容量は今回はなるべく増やさずやる」。
+- SDK が古いことに Muse が気づく手順（2026-11-14）: ガイドの手順 3 に「作る前に毎回、app.list の api_version と
+  SDK の MSW_API_VERSION を比べ、ファームの方が大きければ SDK を更新」。開発中のファームは firmware が 999.0.0 の
+  ままで、版の比べでは気づけないため。関数を増やしたら MSW_API_VERSION と build.py の API_VERSION を上げる。
