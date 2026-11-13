@@ -1071,3 +1071,63 @@
 - 「最後が途切れる」: Museストップウォッチは作った分を全部鳴らしていた。返事の文（465 文字）に対して音が 31.1 秒と短く、
   Muse が途中までの音で ENDLIST を書いた可能性。ユーザー:「サーバリセットで間に合うようになってしまったのでまた起きたら調べる」。
 - 記録に `@msw.say the voice task did not play it for 30 s: dropped` が 1 行（ミニアプリの読み上げ？）。出どころは未確認。
+
+## 2026-11-13: 公開の準備（OTA の取得先、ライセンス）
+
+- OTA: `CONFIG_HOMEHUB_OTA_URL_PREFIX`（SDK の main/Kconfig.projbuild に追加、ota.c の ota_start で確かめる）。
+  StopWatch では `https://github.com/haiatto/museStopWatch/releases/download/` 以外を、Muse・BLE・Wi-Fi 設定のどの経路でも、
+  force でも、ダウンロードの前に断る（`url not allowed`）。ユーザー:「公式は取り込むことはないから公式が取り込まれるルートがあったら塞いでおきたい」。
+  COM5 に書き込み、起動と `OTA image validated` を確認。断る動きは実機では未確認。
+  注意: Kconfig に項目を足したとき、`.\dev.ps1 build` だけでは sdkconfig に入らなかった（reconfigure が要った）。
+- ライセンス: museStopWatch は MIT（ユーザー:「mitが競合しないならそれで」）。調べた範囲で GPL の混入・秘密情報はなし。
+  LVGL の LICENCE.txt を sdk/include/lvgl に写す（make_sdk.py）。hey_muse の出どころと学習データを wakeword/models/README.md に書いた
+  （背景音の一部が非商用。モデルに及ぶかは未確定）。README のライセンスの節を一覧にした。
+- ファームの版は 999.0.0 のまま（最初の版の番号はユーザーの返事待ち）。
+
+## 2026-11-13: PORT.A の入力（msw_pin_read）と、はじめる前の画面（API 3）
+
+- ユーザー:「足す。あと、外へのioを使うアプリは起動時に何するかを出して開始ボタンを押してから始まるような対応しておきたい」
+  （M5 の Dual Button ユニットを見せて、読めるかを聞いた流れ）。
+- msw_pin_read(MSW_PIN_YELLOW=G10 / MSW_PIN_WHITE=G11): 入力＋内部プルアップだけ。出力はない。I2C は閉じる。
+- msw_port_power・msw_i2c_begin・msw_pin_read を使うアプリは app.json の `port` が要る（build.py が止める）:
+  `connect`（つなぐもの、120 バイトまで）と `about`（すること、240 バイトまで）。ユーザー:「どちらかというとアプリ側に説明を用意させて
+  何を繋げられるのかみたいな説明を起動の画面で出したい」。パッケージのデータ `.port`（connect、改行、about）。
+  ファームは ELF の import で見分け、app_main の前に画面いっぱいで両方と「やめる」「はじめる」を出す。
+  開始は青ボタンを押しながら「はじめる」をタッチ（ユーザー:「開始ボタンも間違って押さないように、青ボタン押しながらタッチとかにしたいかも」）。
+  片方だけなら始まらず、案内の行が赤くなる。「はじめる」は灰色で、青ボタンを押している間だけ緑（ユーザー:「はじめる、は灰色っぽくて
+  青ボタン押したら今の色になるとかしたい」）。やめる・黄ボタン・app.stop で始めずに終わる。それまで PORT.A の関数は失敗する。
+  「はじめる」の後に一瞬ランチャーが見えた（ユーザー:「始めるを押した後一瞬アプリ画面出る」）→ 起動の画面は、アプリの画面を読み込んでから消す。
+- 書き込み・apps/sensors を入れて起動: ログに `uses PORT.A; waiting for "はじめる"` まで確認。
+  起動の画面・青ボタンと「はじめる」・その後の切り替えは、ユーザーが実機で見て「もんだなさそう」（2026-11-13）。
+  msw_pin_read は実機で未確認（Dual Button で試せる）。
+
+## 2026-11-13: Doom が落ちる件と、app.install の 30 秒
+
+- ユーザー:「なんかdoomのアプリ落ちるのだけどメモリ足りてない？」。Doom のソース（msw.app.src doom）から:
+  zone は PSRAM のいちばん大きいひと続き − 192 KB（最大 1280 KB）。WAD は deflate で .rodata（220,198 B、elf_loader で 2 つ分）、
+  起動時に malloc へ展開（523,678 B）、画面 430 KB。動作中の heartbeat は psram=110K、lv_draw_buf の 434 KB が取れない警告も出た。
+  案: WAD を展開済みで data/ に置いて msw_app_data で読む（約 1 MB 減る。Muse に頼む形）。ファーム側は未着手。
+- Muse の「パッケージのソースが壊れている」: シリアルの msw.app.src doom は最後まで読めた。read_source は展開用の
+  raw+1 バイトが取れないときも broken_source と返す（誤った名前。未修正）。
+- Muse の「呼び出しの返事待ちが 30 秒で時間切れ、デバイス側は続いていた」: app.install は _async で、パッケージを全部取り終えて
+  から返事する。30 秒は Muse の呼び出し側の上限（Muse の言葉。公式の資料では未確認）。
+  同じ id の入れ直しは古い版を残したまま別の空きに書くので、1.34 MB のひと続きが要る。大きさを知らずに書き始め、入りきらないと
+  詰め直してからダウンロードを最初からやり直していた（入れた後のいちばん大きい空きは 1188 KB）。実際に詰め直しが起きたかはログで未確認。
+- 直した（ユーザー:「1で」= 初めに大きさを知る）: VM の最初の返事のヘッダー（Content-Range の全体、200 なら Content-Length）で
+  大きさを知り、最初の部分を書く前に、その大きさで書き込みを始め直す（足りなければここで詰め直す）。古い版を残す作りはそのまま。
+  noise_control に noise_ctrl_req_open_head（返事のヘッダーを受け取る。noise_ctrl_req_open は今までどおり）、
+  image_fetch_vm_stream_sized、msw_app_install_size / msw_app_install_json_size。ヘッダーがなければ今までどおり。
+  ビルドは通った。書き込みと、Muse からの app.install での確認はまだ（VM のデーモンが Content-Range を返すかも未確認）。
+
+## 2026-11-13: SDK とファームの組（clone の行をファームの版から作る）
+
+- 発端: Muse の「道具のリポジトリはサーバー側と同じ版で、それでもボタンの関数は入っていません」。sdk/ の変更（msw_pin_read、API 3）を
+  まだ push していないため。build.py はどのアプリにも SDK の今の API 版を書くので、SDK だけ上げると古いファームでは新しく作るアプリが
+  全部 api_too_new になる、と話した。ユーザー:「ファームが指定するリビジョンがあれば良い感じ？」→ タグと組にする案に「ならそんな感じで」。
+- miniapp/CMakeLists.txt: guide.md をビルドフォルダに写して埋め込む。version.txt が 999.0.0 でなければ、clone の行を
+  `git clone --depth 1 --branch v<版> <URL>` にする（開発中は main のまま）。cmake -P で 999.0.0 はソースと同じ、0.1.0 は --branch v0.1.0 を確かめた。
+  ビルドフォルダの guide.md もソースと同じ（開発版）。
+- app.list に `firmware`（esp_app_get_description の版）。ガイドの手順 3 に「SDK の版」の説明（ファームが替わったら読み直して入れ直す）。
+- リリースの手順に加わること: 外側のリポジトリに `v<版>` のタグを付けて push（SKILL.md にも書いた）。
+- 初版について、ユーザー:「初版はまだ色々試してからにしたい」。版の番号は決めない。
+- 書き込みはまだ（インストールの変更と同じファーム）。

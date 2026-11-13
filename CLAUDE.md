@@ -72,7 +72,10 @@
   鍵の中身を出力・コミットしない。鍵を替えた後の最初の書き込みは USB で行う。
 - Muse に OTA させるファームの取得先は、配布元のリリースだけ
   （`stopwatch_guide.md` の「ファームの更新」。今は haiatto/museStopWatch の Releases）。
-- 派生版（フォーク）を作るときは、自分の鍵を作り、`stopwatch_guide.md` の取得先と、
+- ファームは、取得先（`devices/sdkconfig.musestopwatch` の `CONFIG_HOMEHUB_OTA_URL_PREFIX`）以外の URL の
+  OTA を、どの経路（Muse、BLE、Wi-Fi 設定）でも、`force` でも断る。公式のファームは入れない（2026-11-13 ユーザー:
+  「公式は取り込むことはないから公式が取り込まれるルートがあったら塞いでおきたい」）。
+- 派生版（フォーク）を作るときは、自分の鍵を作り、`CONFIG_HOMEHUB_OTA_URL_PREFIX` と `stopwatch_guide.md` の取得先と、
   `guide.md` の SDK の clone 先を自分のリポジトリに書き換え、ガイドの版を上げる。
 
 ## Git

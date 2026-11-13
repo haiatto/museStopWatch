@@ -11,8 +11,17 @@ An app is a folder with app.json and its .c files:
       "version": 1,
       "icon": ["....RR....", ...],   text art, up to 32 x 32 ('.' transparent;
                                      16 x 16 or smaller is drawn twice the size)
-      "palette": {"R": "#e53935", ...}
+      "palette": {"R": "#e53935", ...},
+      "port": {"connect": "M5Stack の Dual Button ユニット",
+               "about": "2つのボタンで、画面のキャラを左右に動かします"}
     }
+
+"port" is needed when the app uses PORT.A (msw_port_power, msw_i2c_begin,
+msw_pin_read), in words for the user: "connect", what to plug into PORT.A
+(up to 120 bytes), and "about", what the app does with it (up to 240 bytes).
+The StopWatch shows both before the app starts, and the app runs only after
+the user taps "はじめる" holding the blue button. They go in the package as
+the data file ".port" (connect, a newline, about).
 
 An avatar (Muse's look on the face screen, msw_avatar_define) is built the
 same way with "kind": "avatar" in app.json: its package has the magic "MSWV"
@@ -48,7 +57,10 @@ import zlib
 
 SDK = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(SDK)
-API_VERSION = 2                # 2: msw_app_data and the data/ folder (2026-11-11)
+API_VERSION = 3                # 2: msw_app_data and the data/ folder (2026-11-11); 3: msw_pin_read, "port" (2026-11-13)
+PORT_FNS = ("msw_port_power", "msw_i2c_begin", "msw_pin_read")   # msw_app_core.c is_port_fn
+PORT_CONNECT_MAX = 120
+PORT_ABOUT_MAX = 240
 ICON = 32
 ICON_BG = (0x1A, 0x1F, 0x26)   # the launcher's icon ring
 HEAD_FMT = "<4sHH24s32sHHIII"
@@ -140,14 +152,17 @@ def make_source(app):
     return b"MSWZ" + struct.pack("<II", 4 + len(z), len(data)) + z, len(data)
 
 
-def make_data(app, at):
+def make_data(app, at, extra=None):
     """The files in data/ as the "MSWD" section starting at offset at of the
     package: count, then (name[48], offset, size) each, then the files,
     16-aligned from the package's start (msw_app_priv.h)."""
     d = os.path.join(app, "data")
-    if not os.path.isdir(d):
-        return b""
-    names = sorted(n for n in os.listdir(d) if os.path.isfile(os.path.join(d, n)))
+    extra = extra or {}
+    names = sorted(n for n in os.listdir(d) if os.path.isfile(os.path.join(d, n))) if os.path.isdir(d) else []
+    for n in extra:
+        if n in names:
+            sys.exit(f"data/{n}: the name is the firmware's (app.json)")
+    names = sorted(names + list(extra))
     if not names:
         return b""
     for n in names:
@@ -156,7 +171,7 @@ def make_data(app, at):
     table_end = at + 8 + 4 + 56 * len(names)
     pos, blobs, table = table_end, b"", b""
     for n in names:
-        blob = open(os.path.join(d, n), "rb").read()
+        blob = extra[n] if n in extra else open(os.path.join(d, n), "rb").read()
         pad = (-pos) % 16
         blobs += b"\0" * pad
         pos += pad
@@ -343,10 +358,33 @@ def main():
         print((r.stdout + r.stderr).strip())
         sys.exit("the firmware does not give: " + ", ".join(missing) if missing else "link check failed")
     os.remove(check)
+    nm = re.sub(r"gcc(\.exe)?$", r"nm\1", gcc)
+    r = subprocess.run([nm, "-D", "-u", so], capture_output=True, text=True, errors="replace")
+    imports = set(re.findall(r"\bU (\w+)", r.stdout))
+    extra = {}
+    uses_port = sorted(imports & set(PORT_FNS))
+    if uses_port:
+        port = meta.get("port")
+        need = ('app.json: "port" is needed: the app uses PORT.A (' + ", ".join(uses_port) + '). '
+                '{"connect": what to plug in, "about": what the app does with it}, for the user; '
+                "both are shown before the app starts")
+        if not isinstance(port, dict):
+            sys.exit(need)
+        connect = str(port.get("connect", "")).strip()
+        about = str(port.get("about", "")).strip()
+        if not connect or not about:
+            sys.exit(need)
+        if "\n" in connect:
+            sys.exit('app.json: "port"."connect" is one line')
+        if len(connect.encode("utf-8")) > PORT_CONNECT_MAX:
+            sys.exit(f'app.json: "port"."connect" up to {PORT_CONNECT_MAX} bytes (a Japanese letter takes 3)')
+        if len(about.encode("utf-8")) > PORT_ABOUT_MAX:
+            sys.exit(f'app.json: "port"."about" up to {PORT_ABOUT_MAX} bytes (a Japanese letter takes 3)')
+        extra[".port"] = (connect + "\n" + about).encode("utf-8")
+    elif meta.get("port"):
+        print('note: "port" in app.json, but the app does not use PORT.A: no start screen')
     if avatar:
-        nm = re.sub(r"gcc(\.exe)?$", r"nm\1", gcc)
-        r = subprocess.run([nm, "-D", "-u", so], capture_output=True, text=True, errors="replace")
-        bad = sorted(set(n for n in re.findall(r"\bU (\w+)", r.stdout)
+        bad = sorted(set(n for n in imports
                          if n.startswith("msw_") and n != "msw_avatar_define"))
         if bad:
             sys.exit("an avatar can call no msw_ function but msw_avatar_define: " + ", ".join(bad))
@@ -356,7 +394,7 @@ def main():
     check_layout(elf)
     icon = b"" if avatar else make_icon(meta)
     head_size = struct.calcsize(HEAD_FMT)
-    data = make_data(app, head_size + len(icon) + len(elf))
+    data = make_data(app, head_size + len(icon) + len(elf), extra)
     source, raw = make_source(app) if keep_source else (b"", 0)
     body = icon + elf + data + source
     head = struct.pack(HEAD_FMT, b"MSWV" if avatar else b"MSWA", API_VERSION, version, app_id.encode(),

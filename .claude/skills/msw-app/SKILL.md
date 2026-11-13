@@ -35,6 +35,11 @@ Muse は同じ知識を、ファームに入っているガイド
 .venv/Scripts/python.exe tools/msw_app_install.py COM5 --cmd "msw.app.log"
 ```
 
+SDK とファームの組（2026-11-13）: Muse は VM で、`app.doc`（ファームに入った guide.md）の clone の行の SDK を使う。
+開発中のファーム（version.txt が 999.0.0）は main なので、`sdk/` の変更は push するまで Muse に届かない。
+リリースのファームは、ビルドのときに clone の行が `--branch v<版>` になる（miniapp/CMakeLists.txt）。リリースでは、
+外側のリポジトリに同じ名前のタグ `v<版>` を付けて push する（無いと Muse の clone が失敗する）。`app.list` に `firmware` が出る。
+
 ほかのコンソールコマンド: `msw.app.list`（置き場の空きといちばん大きいすき間も出す。アプリ 48 個・置き場 4.5 MB まで、1 つの上限なし）、
 `msw.app.compact`（置き場を詰め直す）、`msw.app.run <id>`、`msw.app.stop`、
 `msw.app.rm <id>`、`msw.app.src <id>`（パッケージに入っているソース。Muse は `app.source`）、
@@ -132,3 +137,12 @@ Muse は同じ知識を、ファームに入っているガイド
   msw_i2c_*。時刻は ui/msw_time.c（起動時に RTC から、Wi-Fi の IP 取得で SNTP、合わせたら RTC へ UTC で保存、JST-9）。
   RTC・5V・歩数はボードの msw_board_rtc_get/set・msw_board_port_power・msw_board_imu_steps。PORT.A の I2C はアプリ用の
   別バス（i2c_port -1、SDA G10・SCL G11、内蔵プルアップ）。歩数計は BMI270 の機能ページ 6 で有効にする（Bosch の SensorAPI どおり）。
+- PORT.A の入力と、はじめる前の画面（2026-11-13、API 3）: msw_pin_read（G10・G11 を入力＋内部プルアップにするだけ、出力はなし）。
+  msw_port_power・msw_i2c_begin・msw_pin_read を呼ぶアプリは、app.json の `port` が要る:
+  `{"connect": つなぐもの（1 行、120 バイトまで）, "about": すること（240 バイトまで）}`（2026-11-13 ユーザー:「アプリ側に説明を
+  用意させて何を繋げられるのかみたいな説明を起動の画面で出したい」）。build.py が nm で見て止め、パッケージのデータ `.port`
+  （connect、改行、about）に入れる。ファームは ELF の import で見分け（msw_app_core.c is_port_fn）、app_main の前に
+  画面いっぱいで「PORT.A（Grove）につなぐもの」「このアプリがすること」と「やめる」「はじめる」を出す（msw_app_menu.c msw_menu_open_start）。
+  青ボタンを押しながら「はじめる」で始まる（どちらか片方だけでは始まらない。2026-11-13 ユーザー:「開始ボタンも間違って押さないように、
+  青ボタン押しながらタッチとかにしたいかも」）。やめる・黄ボタン・app.stop で始めずに終わる。押されるまで PORT.A の関数は失敗する
+  （msw_port_allow）。

@@ -55,6 +55,7 @@ void msw_i2c_scan(void) {}
 void msw_i2c_write(void) {}
 void msw_i2c_read(void) {}
 void msw_i2c_write_read(void) {}
+void msw_pin_read(void) {}
 void msw_store_put(void) {}
 void msw_store_get(void) {}
 void msw_app_data(void) {}

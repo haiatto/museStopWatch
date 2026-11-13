@@ -32,7 +32,8 @@ def main():
     shutil.copy2(SPEAKING, OUT)
     shutil.copy2(CONFIG, OUT)
     n = 0
-    for base in ("lvgl.h", "lv_version.h"):
+    # LICENCE.txt: lvgl is MIT, and its notice must go with the copied headers.
+    for base in ("lvgl.h", "lv_version.h", "LICENCE.txt"):
         src = os.path.join(LVGL, base)
         if os.path.exists(src):
             os.makedirs(os.path.join(OUT, "lvgl"), exist_ok=True)
