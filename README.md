@@ -7,7 +7,7 @@ M5Stack StopWatch（ESP32-S3、1.75 インチ円形 AMOLED）で Muse を動か�
 できること（公式に足したもの）:
 
 - **ミニアプリ**: Muse が C で小さなアプリ（ゲームなど）を作って本体に入れ、その場で動かせる
-- **本体での日本語読み上げ**: [sanoTTS-jp](https://github.com/ayutaz/sanoTTS-jp) を本体で動かす（`voice.say`）
+- **本体での日本語読み上げ**: [sanoTTS-jp](https://github.com/ayutaz/sanoTTS-jp) を本体で動かし、Muse の返事を本体の声で読む
 - **Web 設定・AP モード・QR**: スマホのブラウザから Wi-Fi と Muse の設定。保存済み Wi-Fi の切り替え
 - **サイドチャット**、日本語の表示（Noto Sans JP）
 
@@ -50,8 +50,8 @@ IMU の設定 [msw_bmi270_config.c](https://github.com/haiatto/muse-gadget-sdk/b
 
 | ファイル | 改造の内容 |
 |---|---|
-| [main/app.c](https://github.com/haiatto/muse-gadget-sdk/blob/dev/stopwatch/esp32/main/app.c) | `app.*` と `voice.say` の処理（部品がないときは何もしない）、VM 認証タスクのスタック |
-| [main/noise_control.cpp](https://github.com/haiatto/muse-gadget-sdk/blob/dev/stopwatch/esp32/main/noise_control.cpp) | `app.*` と `voice.say` の登録、登録 JSON の上限（StopWatch は 256 KB）、PSRAM のスタック |
+| [main/app.c](https://github.com/haiatto/muse-gadget-sdk/blob/dev/stopwatch/esp32/main/app.c) | `app.*` の処理（部品がないときは何もしない）、VM 認証タスクのスタック |
+| [main/noise_control.cpp](https://github.com/haiatto/muse-gadget-sdk/blob/dev/stopwatch/esp32/main/noise_control.cpp) | `app.*` の登録、登録 JSON の上限（StopWatch は 256 KB）、PSRAM のスタック |
 | [main/image_fetch.c](https://github.com/haiatto/muse-gadget-sdk/blob/dev/stopwatch/esp32/main/image_fetch.c) | VM のファイルを丸ごと PSRAM に取る（`app.install` 用） |
 | [main/muse_glue.c](https://github.com/haiatto/muse-gadget-sdk/blob/dev/stopwatch/esp32/main/muse_glue.c), [muse_link.c](https://github.com/haiatto/muse-gadget-sdk/blob/dev/stopwatch/esp32/components/muse/muse_link.c) | 保存済み Wi-Fi に切り替える（`muse_wifi_choose`） |
 | [main/tunnel_netif.c](https://github.com/haiatto/muse-gadget-sdk/blob/dev/stopwatch/esp32/main/tunnel_netif.c) | タスクのスタックを PSRAM に |
