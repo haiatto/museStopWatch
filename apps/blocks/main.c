@@ -30,10 +30,10 @@ typedef struct {
  * the thumbs cover the least of the play area there. Each sits 192 px
  * from the centre at the angle noted (0 = right, 90 = down). */
 static const button_t s_btn[NBTN] = {
-    { 59, 314, 23, LV_SYMBOL_LEFT },     /* 155 */
-    { 152, 407, 23, LV_SYMBOL_RIGHT },   /* 115 */
+    { 46, 300, 23, LV_SYMBOL_LEFT },     /* left and right in a row */
+    { 118, 300, 23, LV_SYMBOL_RIGHT },   /* kept clear of the well */
     { 407, 314, 23, LV_SYMBOL_REFRESH }, /*  25: turn the other way */
-    { 97, 369, 23, LV_SYMBOL_DOWN },     /* 135 */
+    { 98, 390, 23, LV_SYMBOL_DOWN },     /* below, between the two */
     { 369, 369, 26, "A" },               /*  45: turn */
     { 314, 407, 26, "B" },               /*  65: drop */
 };
@@ -457,7 +457,7 @@ static void draw(void)
         text_center(WX + W * CELL / 2, 196, title, MSW_RGB(255, 220, 120), 0);
         text_center(WX + W * CELL / 2, 230, "タップでスタート", MSW_RGB(220, 220, 220), 0);
     }
-    msw_fb_present_rect(24, 40, 418, 360);
+    msw_fb_present();
 }
 
 /* ---- the callbacks -------------------------------------------------------------- */

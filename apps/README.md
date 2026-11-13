@@ -16,6 +16,9 @@ Museストップウォッチ用のミニアプリとアバターのサンプル�
 | [aquarium](aquarium/) | まるい水槽 | 魚が泳ぐ水槽 |
 | [mimi](mimi/) | みみ | マイクの音の大きさと、録音・再生 |
 | [sensors](sensors/) | センサー | 時刻・電池・歩数・PORT.A の一覧 |
+| [catmine](catmine/) | ねこマインスイーパー | 猫が隠れているマインスイーパー。鳴き声はコードで作る |
+| [kamisumo](kamisumo/) | かみずもう | PORT.A の Dual Button で遊ぶ紙相撲。かけ声の音（`data/`）は入れていない |
+| [piano](piano/) | かんたん鍵盤 | タッチで鳴る 8 つの鍵盤 |
 | [shizuku](shizuku/) | しずく | アバター |
 
 ## 1 つのアプリのフォルダ
