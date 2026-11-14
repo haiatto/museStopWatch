@@ -145,6 +145,8 @@ IMU の設定 [msw_bmi270_config.c](https://github.com/haiatto/muse-gadget-sdk/b
 - Muse に `device.ota` を頼むと、[Releases](https://github.com/haiatto/museStopWatch/releases) の
   `muse-gadget.bin` でファームを更新します（取得先は Muse 向けの総合ガイド
   [stopwatch_guide.md](https://github.com/haiatto/muse-gadget-sdk/blob/dev/stopwatch/esp32/components/muse_diy_stopwatch/docs/stopwatch_guide.md) に書いてあります）。
+- Releases には、メイン（`0.2.0` の形）と開発用（`0.2.0-dev.1` の形、pre-release）があります。
+  Muse はふだんメインの最新を入れ、「開発用を入れて」と頼んだときだけ開発用を入れます。
 - ファームは自分の鍵で署名しています（鍵は git に入れていません）。ファームは、今動いているファームと同じ鍵で
   署名したものしか OTA で受け付けません。鍵がなければ、SDK の共有のサンプル鍵で署名されます。
 - 派生版を作るときは:

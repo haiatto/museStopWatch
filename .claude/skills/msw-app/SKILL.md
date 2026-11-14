@@ -40,6 +40,16 @@ SDK とファームの組（2026-11-13）: Muse は VM で、`app.doc`（ファ�
 リリースのファームは、ビルドのときに clone の行が `--branch v<版>` になる（miniapp/CMakeLists.txt）。リリースでは、
 外側のリポジトリに同じ名前のタグ `v<版>` を付けて push する（無いと Muse の clone が失敗する）。`app.list` に `firmware` が出る。
 
+リリースの手順（2026-11-14。ユーザー: メインと開発用を分けたい →「それでよろ」）:
+1. SDK の `esp32/version.txt` を版にする。メインは `0.2.0`、開発用は `0.2.0-dev.1`（次の版に向けた途中）。
+2. `.\dev.ps1 build`。自分の鍵で署名されたか（espsecure verify-signature）、埋め込みのガイドの clone の行が `--branch v<版>` か確かめる。
+3. SDK をコミットして push、外側で submodule をコミットして push、外側にタグ `v<版>` を付けて push。
+4. `gh release create v<版> muse-gadget.bin --verify-tag`。開発用は `--prerelease`（latest に出ない）。
+5. 0.1.0 のあとは version.txt を 999.0.0 に戻した。0.2.0-dev.1 では戻さない（ユーザー:「999 に戻さない」）。
+   そのあと手元で組み立てたファームも、その版を名乗る。
+Muse はふだん latest（メイン）を入れ、「開発用」と頼まれたときだけ pre-release を入れる（stopwatch_guide.md）。
+版の比べ方（ota.c）は数字が同じなら文字の違いで「新しい」なので、`0.2.0-dev.N` → `0.2.0` は force なしで上がる。
+
 ほかのコンソールコマンド: `msw.app.list`（置き場の空きといちばん大きいすき間も出す。アプリ 48 個・置き場 4.5 MB まで、1 つの上限なし）、
 `msw.app.compact`（置き場を詰め直す）、`msw.app.run <id>`、`msw.app.stop`、
 `msw.app.rm <id>`、`msw.app.src <id>`（パッケージに入っているソース。Muse は `app.source`）、
