@@ -23,6 +23,10 @@ The StopWatch shows both before the app starts, and the app runs only after
 the user taps "はじめる" holding the blue button. They go in the package as
 the data file ".port" (connect, a newline, about).
 
+"commands" lists what the app takes from Muse's app.call (msw_on_muse_call):
+[{"name": "servo", "about": "what it does", "args": {"ch": "0 to 7"}}, ...].
+It goes in the package as the data file ".commands"; app.commands returns it.
+
 An avatar (Muse's look on the face screen, msw_avatar_define) is built the
 same way with "kind": "avatar" in app.json: its package has the magic "MSWV"
 and no icon, and it may call no msw_ function but msw_avatar_define.
@@ -57,8 +61,11 @@ import zlib
 
 SDK = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(SDK)
-API_VERSION = 4                # 2: msw_app_data and the data/ folder (2026-11-11); 3: msw_pin_read, "port" (2026-11-13);
-                               # 4: msw_uart_*, msw_jpeg_*, msw_nn_* (2026-11-14)
+API_VERSION = 5                # 2: msw_app_data and the data/ folder (2026-11-11); 3: msw_pin_read, "port" (2026-11-13);
+                               # 4: msw_uart_*, msw_jpeg_*, msw_nn_* (2026-11-14);
+                               # 5: msw_on_muse_call, msw_arg_*, "commands" (2026-11-14)
+COMMAND_NAME = r"[a-z0-9_]{1,31}"
+COMMANDS_MAX = 4096            # bytes of the ".commands" JSON
 PORT_FNS = ("msw_port_power", "msw_i2c_begin", "msw_pin_read", "msw_uart_begin")   # msw_app_core.c is_port_fn
 PORT_CONNECT_MAX = 120
 PORT_ABOUT_MAX = 240
@@ -151,6 +158,43 @@ def make_source(app):
     data = "".join(parts).encode("utf-8")
     z = zlib.compress(data, 9)
     return b"MSWZ" + struct.pack("<II", 4 + len(z), len(data)) + z, len(data)
+
+
+def make_commands(cmds):
+    """app.json "commands" as the data file ".commands" (compact JSON), which
+    app.commands returns to Muse:
+        [{"name": "servo", "about": "what it does",
+          "args": {"ch": "0 to 7", "angle": "0 to 180"}}, ...]
+    "args" is optional; each value says in words what the argument is."""
+    if not isinstance(cmds, list):
+        sys.exit('app.json: "commands" is a list of {"name", "about", "args"}')
+    out, seen = [], set()
+    for c in cmds:
+        if not isinstance(c, dict):
+            sys.exit('app.json: each of "commands" is {"name", "about", "args"}')
+        name = c.get("name")
+        if not isinstance(name, str) or not re.fullmatch(COMMAND_NAME, name):
+            sys.exit(f'app.json: command name {name!r}: 1 to 31 of a-z, 0-9 and _')
+        if name in seen:
+            sys.exit(f'app.json: command "{name}" is there twice')
+        seen.add(name)
+        about = c.get("about")
+        if not isinstance(about, str) or not about.strip():
+            sys.exit(f'app.json: command "{name}" needs "about": what it does')
+        args = c.get("args", {})
+        if not isinstance(args, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in args.items()):
+            sys.exit(f'app.json: command "{name}": "args" is {{"key": "what it is", ...}}')
+        bad = set(c) - {"name", "about", "args"}
+        if bad:
+            sys.exit(f'app.json: command "{name}": unknown keys {", ".join(sorted(bad))}')
+        item = {"name": name, "about": about.strip()}
+        if args:
+            item["args"] = args
+        out.append(item)
+    data = json.dumps(out, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    if len(data) > COMMANDS_MAX:
+        sys.exit(f'app.json: "commands" is {len(data)} bytes as JSON; {COMMANDS_MAX} at most')
+    return data
 
 
 def make_data(app, at, extra=None):
@@ -384,6 +428,15 @@ def main():
         extra[".port"] = (connect + "\n" + about).encode("utf-8")
     elif meta.get("port"):
         print('note: "port" in app.json, but the app does not use PORT.A: no start screen')
+    cmds = meta.get("commands")
+    if cmds is not None:
+        if avatar:
+            sys.exit('app.json: an avatar takes no "commands"')
+        extra[".commands"] = make_commands(cmds)
+        if "msw_on_muse_call" not in imports:
+            print('note: "commands" in app.json, but the app does not call msw_on_muse_call: app.call gets no_commands')
+    elif "msw_on_muse_call" in imports:
+        print('note: the app calls msw_on_muse_call, but app.json has no "commands": Muse cannot read what it takes')
     if avatar:
         bad = sorted(set(n for n in imports
                          if n.startswith("msw_") and n != "msw_avatar_define"))

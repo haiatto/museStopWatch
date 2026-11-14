@@ -79,6 +79,15 @@ void msw_avatar_hide(void) {}
 void msw_bubble(void) {}
 void msw_on_muse_reply(void) {}
 void msw_muse_talk(void) {}
+void msw_on_muse_call(void) {}
+void msw_arg_has(void) {}
+void msw_arg_int(void) {}
+void msw_arg_float(void) {}
+void msw_arg_bool(void) {}
+void msw_arg_str(void) {}
+void msw_arg_len(void) {}
+void msw_arg_int_at(void) {}
+void msw_arg_float_at(void) {}
 void msw_avatar_define(void) {}
 void malloc(void) {}
 void calloc(void) {}

@@ -1,7 +1,11 @@
 {
   "id": "sensors",
   "name": "センサー",
-  "version": 1,
+  "version": 2,
+  "commands": [
+    {"name": "read", "about": "今の時刻・電池・歩数と、PORT.A で見つかった I2C のアドレスを返す"},
+    {"name": "scan", "about": "PORT.A の I2C を調べ直して、見つかったアドレスを返す"}
+  ],
   "icon": [
     "................",
     "....WWWWWWWW....",

@@ -62,7 +62,13 @@ Muse はふだん latest（メイン）を入れ、「開発用」と頼まれ�
 `msw.app.compact`（置き場を詰め直す）、`msw.app.run <id>`、`msw.app.stop`、
 `msw.app.rm <id>`、`msw.app.src <id>`（パッケージに入っているソース。Muse は `app.source`）、
 `msw.app.shot`（今の画面の JPEG を base64 の行で。既定は Muse と同じ半分の大きさ、`msw.app.shot full` で 466 x 466。Muse は `app.screenshot`、`size: "full"` で全体）、`msw.caption <文字>`（字幕を出す。`\n` で改行。アバター画面やメニューの吹き出しの見え方の確認に）、`msw.imu`（IMU の生の値と画面の向きに直した値）、
-`msw.tp <秒>`（タッチ IC のレジスタを表示）。
+`msw.tp <秒>`（タッチ IC のレジスタを表示）、
+`msw.app.tool <app.* の名前> <JSON>`（Muse の app.* ツールをシリアルから呼ぶ。例 `msw.app.tool app.call {"name":"read"}`）。
+
+Muse からアプリへの指示（2026-11-14、API 5。ユーザー:「museからアプリ操作できる感じにしたいかも」、引数は
+「おすすめで」= JSON をファームが読み、アプリは msw_arg_* で読む）: `app.commands`（app.json の `commands`、パッケージの
+`.commands`）と `app.call`（`msw_app_call.c`。Muse のタスクが置いて待ち、アプリのタスクがティックの間に
+`msw_call_deliver` で取る。3 秒で時間切れ）。アプリから Muse への道はない。例は apps/sensors。
 
 ## 手順
 
